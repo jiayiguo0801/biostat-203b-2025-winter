@@ -175,7 +175,7 @@ $5 == 51301 || $5 == 50931
 Display the first 10 lines of the new file `labevents_filtered.csv.gz`. How many lines are in this new file, excluding the header? How long does it take `read_csv` to ingest `labevents_filtered.csv.gz`?
 ```{r}
 library(tidyverse)
-df < read_csv("~/mimic/hosp/labevents_filtered.csv.gz")
+df < read_csv("/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/labevents_filtered.csv.gz")
 head(df, 10)
 ```
 
@@ -195,6 +195,7 @@ Then use [`arrow::open_dataset`](https://arrow.apache.org/docs/r/reference/open_
 
 ```{r}
 install.packages("arrow")
+library("arrow")
 
 ```
 
