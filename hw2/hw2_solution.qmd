@@ -164,19 +164,18 @@ In later exercises, we will only be interested in the following lab items: creat
 #| eval: true
 zcat < ~/mimic/hosp/labevents.csv.gz | awk -F, '
 BEGIN {OFS = ","}
-NR==1 {print "subject_id, itemid, charttime, valuenum"; next} 
-$5 == 50912 || $5 == 50971 || $5 == 50983 || 
+{($5 == 50912 || $5 == 50971 || $5 == 50983 || 
 $5 == 50902 || $5 == 50882 || $5 == 51221 || 
-$5 == 51301 || $5 == 50931
+$5 == 51301 || $5 == 50931)
 {print $2, $5, $7, $10}
+}
 ' | gzip > labevents_filtered.csv.gz
 ```
 
 Display the first 10 lines of the new file `labevents_filtered.csv.gz`. How many lines are in this new file, excluding the header? How long does it take `read_csv` to ingest `labevents_filtered.csv.gz`?
 ```{r}
 library(tidyverse)
-df < read_csv("/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/labevents_filtered.csv.gz")
-head(df, 10)
+read_csv("/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/labevents_filtered.csv.gz")
 ```
 
 ### Q2.4 Ingest `labevents.csv` by Apache Arrow
