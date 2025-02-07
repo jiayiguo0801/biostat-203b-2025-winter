@@ -134,10 +134,11 @@ zcat < ~/mimic/hosp/labevents.csv.gz | head -10
 </p>
 
 Try to ingest `labevents.csv.gz` using `read_csv`. What happens? If it takes more than 3 minutes on your computer, then abort the program and report your findings. 
-```{r}
+```{r, eval=FALSE}
 read_csv("~/mimic/hosp/labevents.csv.gz")
 ```
-
+#### Solution
+it took too long time and I aborted the program.
 ### Q2.2 Ingest selected columns of `labevents.csv.gz` by `read_csv`
 
 Try to ingest only columns `subject_id`, `itemid`, `charttime`, and `valuenum` in `labevents.csv.gz` using `read_csv`.  Does this solve the ingestion issue? (Hint: `col_select` argument in `read_csv`.)
@@ -150,7 +151,8 @@ read_csv("~/mimic/hosp/labevents.csv.gz",
                         )
          )
 ```
-
+#### Solution
+it still took too long time and I aborted the program.
 ### Q2.3 Ingest a subset of `labevents.csv.gz`
 
 <p align="center">
@@ -161,7 +163,7 @@ Our first strategy to handle this big data file is to make a subset of the `labe
 
 In later exercises, we will only be interested in the following lab items: creatinine (50912), potassium (50971), sodium (50983), chloride (50902), bicarbonate (50882), hematocrit (51221), white blood cell count (51301), and glucose (50931) and the following columns: `subject_id`, `itemid`, `charttime`, `valuenum`. Write a Bash command to extract these columns and rows from `labevents.csv.gz` and save the result to a new file `labevents_filtered.csv.gz` in the current working directory. (Hint: Use `zcat <` to pipe the output of `labevents.csv.gz` to `awk` and then to `gzip` to compress the output. Do **not** put `labevents_filtered.csv.gz` in Git! To save render time, you can put `#| eval: false` at the beginning of this code chunk. TA will change it to `#| eval: true` before rendering your qmd file.)
 ```{bash}
-#| eval: true
+#| eval: false
 zcat < ~/mimic/hosp/labevents.csv.gz | awk -F, '
 BEGIN {OFS = ","}
 {if ($5 == 50912 || $5 == 50971 || $5 == 50983 || 
@@ -175,7 +177,11 @@ $5 == 51301 || $5 == 50931)
 Display the first 10 lines of the new file `labevents_filtered.csv.gz`. How many lines are in this new file, excluding the header? How long does it take `read_csv` to ingest `labevents_filtered.csv.gz`?
 ```{r}
 library(tidyverse)
-read_csv("/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/labevents_filtered.csv.gz")
+system.time({
+  labevents_filtered <- read_csv("~/mimic/labevents_filtered.csv.gz")
+})
+head(labevents_filtered, 10)
+num_rows <- nrow(labevents_filtered)
 ```
 
 ### Q2.4 Ingest `labevents.csv` by Apache Arrow
@@ -237,7 +243,7 @@ system.time(filter_arrow <- dataset_arrow %>%
 
 Write a few sentences to explain what is Apache Arrow. Imagine you want to explain it to a layman in an elevator. 
 #### Solution
-
+The apache arrow is like a big square that we can use to take a new approach to parades. Without a square, we would have to call out each soldier and review them in turn, which is time-consuming. But apache arrow provides a square so that we can make the soldiers according to the order of the team into the square waiting for the parade, so do not have to review all the soldiers in turn, saving a lot of time. At the same time, we can also order the soldiers to enter the square in order, so we don't have to review all the soldiers, which saves a lot of time. And in this square the soldiers use a new language, not English or Spanish, so that all can understand each other.
 
 ### Q2.5 Compress `labevents.csv` to Parquet format and ingest/select/filter
 
@@ -282,6 +288,8 @@ nrow(filter_parquet)
 
 ```
 Write a few sentences to explain what is the Parquet format. Imagine you want to explain it to a layman in an elevator.
+#### Solution
+Parquet is a new smarter and more efficient way of storing weapons, like storing weapons, which are traditionally stacked in warehouses and not categorized. But parquet weapons are categorized and will be the same category of weapons are tied to a rope, so that you need to find a certain kind of weapons do not have to look through all the weapons, just need to look at the rope tied to all the weapons will be enough. Saves time.
 
 ### Q2.6 DuckDB
 
@@ -296,9 +304,25 @@ dataset_parquet_Q2.6 <- open_dataset(
   sources = "~/mimic/part-0.parquet", 
   format = "parquet"
 )
-
+con <- dbConnect(duckdb::duckdb())
+system.time({
+  # Convert Parquet dataset to DuckDB
+  dataset_duckdb <- arrow::to_duckdb(dataset_parquet_Q2.6, con)
+  # Select columns and filter rows
+  filter_duckdb <- dataset_duckdb %>%
+    select(subject_id, itemid, charttime, valuenum) %>%
+    filter(
+      itemid %in% c(50912, 50971, 50983, 50902, 
+                    50882, 51221, 51301, 50931)
+    ) %>%
+    collect()  
+})
+head(filter_duckdb, 10)
+nrow(filter_duckdb)
 ```
 Write a few sentences to explain what is DuckDB. Imagine you want to explain it to a layman in an elevator.
+#### Solution
+The DuckDB is like a walkie-talkie, and every soldier was given one so that when giving orders to the soldiers there was no need to have them gather in the square, but rather to find out directly through the walkie-talkie which soldiers needed to carry out the orders and have them do so.
 
 ## Q3. Ingest and filter `chartevents.csv.gz`
 
