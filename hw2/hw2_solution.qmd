@@ -246,7 +246,62 @@ Write a few sentences to explain what is Apache Arrow. Imagine you want to expla
 </p>
 
 Re-write the csv file `labevents.csv` in the binary Parquet format (Hint: [`arrow::write_dataset`](https://arrow.apache.org/docs/r/reference/write_dataset.html).) How large is the Parquet file(s)? How long does the ingest+select+filter process of the Parquet file(s) take? Display the number of rows and the first 10 rows of the result tibble and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
+```{r}
+dataset_arrow_2 <- arrow::open_dataset(
+  sources = "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/labevents.csv", 
+  schema = NULL, 
+  format = "csv"
+)
+filter_arrow_2 <- dataset_arrow_2 %>%
+  select(subject_id, itemid, charttime, valuenum) %>%
+  filter(
+    itemid == 50912 | 
+    itemid == 50971 | 
+    itemid == 50983 | 
+    itemid == 50902 | 
+    itemid == 50882 | 
+    itemid == 51221 | 
+    itemid == 51301 | 
+    itemid == 50931
+    ) %>%
+  collect()
+arrow::write_dataset(
+  filter_arrow_2, 
+  "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2", 
+  format = "parquet"
+  )
+system.time(dataset_arrow_2 <- arrow::open_dataset(
+  sources = "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/labevents.csv", 
+  schema = NULL, 
+  format = "csv"
+)
+filter_arrow_2 <- dataset_arrow_2 %>%
+  select(subject_id, itemid, charttime, valuenum) %>%
+  filter(
+    itemid == 50912 | 
+    itemid == 50971 | 
+    itemid == 50983 | 
+    itemid == 50902 | 
+    itemid == 50882 | 
+    itemid == 51221 | 
+    itemid == 51301 | 
+    itemid == 50931
+    ) %>%
+  collect()
+arrow::write_dataset(
+  filter_arrow_2, 
+  "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2", 
+  format = "parquet"
+  )
+)
+result_parquet <- open_dataset(
+  sources = "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/part-0.parquet", 
+  format = "parquet"
+)
+head(result_parquet, 10)
+nrow(result_parquet)
 
+```
 Write a few sentences to explain what is the Parquet format. Imagine you want to explain it to a layman in an elevator.
 
 ### Q2.6 DuckDB
@@ -256,7 +311,13 @@ Write a few sentences to explain what is the Parquet format. Imagine you want to
 </p>
 
 Ingest the Parquet file, convert it to a DuckDB table by [`arrow::to_duckdb`](https://arrow.apache.org/docs/r/reference/to_duckdb.html), select columns, and filter rows as in Q2.5. How long does the ingest+convert+select+filter process take? Display the number of rows and the first 10 rows of the result tibble and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
-
+```{r}
+library(duckdb)
+result_parquet <- open_dataset(
+  sources = "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/part-0.parquet", 
+  format = "parquet"
+)
+```
 Write a few sentences to explain what is DuckDB. Imagine you want to explain it to a layman in an elevator.
 
 ## Q3. Ingest and filter `chartevents.csv.gz`
