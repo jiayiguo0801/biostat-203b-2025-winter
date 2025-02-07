@@ -191,14 +191,53 @@ gzcat ~/mimic/hosp/labevents.csv.gz > labevents.csv
 ```
 
 Then use [`arrow::open_dataset`](https://arrow.apache.org/docs/r/reference/open_dataset.html) to ingest `labevents.csv`, select columns, and filter `itemid` as in Q2.3. How long does the ingest+select+filter process take? Display the number of rows and the first 10 rows of the result tibble, and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
+#### Solution
+The process took approximate 60s.
 
 ```{r}
+#| eval: false
 install.packages("arrow")
-library("arrow")
+library(arrow)
+library(dplyr)
 
+dataset_arrow <- arrow::open_dataset(
+  sources = "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/labevents.csv", 
+  schema = NULL, 
+  format = "csv"
+)
+filter_arrow <- dataset_arrow %>%
+  select(subject_id, itemid, charttime, valuenum) %>%
+  filter(
+    itemid == 50912 | 
+    itemid == 50971 | 
+    itemid == 50983 | 
+    itemid == 50902 | 
+    itemid == 50882 | 
+    itemid == 51221 | 
+    itemid == 51301 | 
+    itemid == 50931
+    ) %>%
+  collect()
+head(filter_arrow, 10)
+nrow(filter_arrow)
+system.time(filter_arrow <- dataset_arrow %>%
+  select(subject_id, itemid, charttime, valuenum) %>%
+  filter(
+    itemid == 50912 | 
+    itemid == 50971 | 
+    itemid == 50983 | 
+    itemid == 50902 | 
+    itemid == 50882 | 
+    itemid == 51221 | 
+    itemid == 51301 | 
+    itemid == 50931
+    ) %>%
+  collect())
 ```
 
 Write a few sentences to explain what is Apache Arrow. Imagine you want to explain it to a layman in an elevator. 
+#### Solution
+
 
 ### Q2.5 Compress `labevents.csv` to Parquet format and ingest/select/filter
 
