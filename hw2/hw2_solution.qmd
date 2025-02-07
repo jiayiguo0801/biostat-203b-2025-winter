@@ -164,12 +164,12 @@ In later exercises, we will only be interested in the following lab items: creat
 #| eval: true
 zcat < ~/mimic/hosp/labevents.csv.gz | awk -F, '
 BEGIN {OFS = ","}
-{($5 == 50912 || $5 == 50971 || $5 == 50983 || 
+{if ($5 == 50912 || $5 == 50971 || $5 == 50983 || 
 $5 == 50902 || $5 == 50882 || $5 == 51221 || 
 $5 == 51301 || $5 == 50931)
 {print $2, $5, $7, $10}
 }
-' | gzip > labevents_filtered.csv.gz
+' | gzip >  ~/mimic/labevents_filtered.csv.gz
 ```
 
 Display the first 10 lines of the new file `labevents_filtered.csv.gz`. How many lines are in this new file, excluding the header? How long does it take `read_csv` to ingest `labevents_filtered.csv.gz`?
@@ -187,6 +187,7 @@ read_csv("/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-wint
 Our second strategy is to use [Apache Arrow](https://arrow.apache.org/) for larger-than-memory data analytics. Unfortunately Arrow does not work with gz files directly. First decompress `labevents.csv.gz` to `labevents.csv` and put it in the current working directory (do not add it in git!). To save render time, put `#| eval: false` at the beginning of this code chunk. TA will change it to `#| eval: true` when rendering your qmd file.
 
 ```{bash}
+#| eval: false
 gzcat ~/mimic/hosp/labevents.csv.gz > labevents.csv
 ```
 
@@ -194,14 +195,13 @@ Then use [`arrow::open_dataset`](https://arrow.apache.org/docs/r/reference/open_
 #### Solution
 The process took approximate 60s.
 
-```{r}
-#| eval: false
+```{r, eval=FALSE}
 install.packages("arrow")
 library(arrow)
 library(dplyr)
 
 dataset_arrow <- arrow::open_dataset(
-  sources = "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/labevents.csv", 
+  sources = "~/mimic/labevents.csv", 
   schema = NULL, 
   format = "csv"
 )
@@ -246,13 +246,24 @@ Write a few sentences to explain what is Apache Arrow. Imagine you want to expla
 </p>
 
 Re-write the csv file `labevents.csv` in the binary Parquet format (Hint: [`arrow::write_dataset`](https://arrow.apache.org/docs/r/reference/write_dataset.html).) How large is the Parquet file(s)? How long does the ingest+select+filter process of the Parquet file(s) take? Display the number of rows and the first 10 rows of the result tibble and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
+#### Solution
+The Parquet file is 2731040379 bytes or ~2.5GB. The ingest+select+filter process of the Parquet file takes ~13s. The number of rows is 32679896.
 ```{r}
 dataset_arrow_2 <- arrow::open_dataset(
-  sources = "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/labevents.csv", 
+  sources = "~/mimic/labevents.csv", 
   schema = NULL, 
   format = "csv"
 )
-filter_arrow_2 <- dataset_arrow_2 %>%
+arrow::write_dataset(
+  dataset_arrow_2, 
+  path = "~/mimic", 
+  format = "parquet"
+)
+file_size_bytes <- file.info("part-0.parquet")$size
+file_size_gb <- file_size_bytes / (1024^3)
+system.time({
+  dataset_parquet <- arrow::open_dataset("~/mimic/part-0.parquet")   
+  filter_parquet <- dataset_parquet %>%
   select(subject_id, itemid, charttime, valuenum) %>%
   filter(
     itemid == 50912 | 
@@ -265,41 +276,9 @@ filter_arrow_2 <- dataset_arrow_2 %>%
     itemid == 50931
     ) %>%
   collect()
-arrow::write_dataset(
-  filter_arrow_2, 
-  "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2", 
-  format = "parquet"
-  )
-system.time(dataset_arrow_2 <- arrow::open_dataset(
-  sources = "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/labevents.csv", 
-  schema = NULL, 
-  format = "csv"
-)
-filter_arrow_2 <- dataset_arrow_2 %>%
-  select(subject_id, itemid, charttime, valuenum) %>%
-  filter(
-    itemid == 50912 | 
-    itemid == 50971 | 
-    itemid == 50983 | 
-    itemid == 50902 | 
-    itemid == 50882 | 
-    itemid == 51221 | 
-    itemid == 51301 | 
-    itemid == 50931
-    ) %>%
-  collect()
-arrow::write_dataset(
-  filter_arrow_2, 
-  "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2", 
-  format = "parquet"
-  )
-)
-result_parquet <- open_dataset(
-  sources = "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/part-0.parquet", 
-  format = "parquet"
-)
-head(result_parquet, 10)
-nrow(result_parquet)
+  })
+head(filter_parquet, 10)
+nrow(filter_parquet)
 
 ```
 Write a few sentences to explain what is the Parquet format. Imagine you want to explain it to a layman in an elevator.
@@ -313,10 +292,11 @@ Write a few sentences to explain what is the Parquet format. Imagine you want to
 Ingest the Parquet file, convert it to a DuckDB table by [`arrow::to_duckdb`](https://arrow.apache.org/docs/r/reference/to_duckdb.html), select columns, and filter rows as in Q2.5. How long does the ingest+convert+select+filter process take? Display the number of rows and the first 10 rows of the result tibble and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
 ```{r}
 library(duckdb)
-result_parquet <- open_dataset(
-  sources = "/Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/hw2/part-0.parquet", 
+dataset_parquet_Q2.6 <- open_dataset(
+  sources = "~/mimic/part-0.parquet", 
   format = "parquet"
 )
+
 ```
 Write a few sentences to explain what is DuckDB. Imagine you want to explain it to a layman in an elevator.
 
@@ -333,9 +313,22 @@ zcat < ~/mimic/icu/chartevents.csv.gz | tail -n +2 | wc -l
 ```
 [`d_items.csv.gz`](https://mimic.mit.edu/docs/iv/modules/icu/d_items/) is the dictionary for the `itemid` in `chartevents.csv.gz`.
 ```{bash}
+#| eval: false
 zcat < ~/mimic/icu/d_items.csv.gz | head -10
 ```
 In later exercises, we are interested in the vitals for ICU patients: heart rate (220045), mean non-invasive blood pressure (220181), systolic non-invasive blood pressure (220179), body temperature in Fahrenheit (223761), and respiratory rate (220210). Retrieve a subset of `chartevents.csv.gz` only containing these items, using the favorite method you learnt in Q2. 
+```{r}
+dataset_arrow_Q3 <- arrow::open_dataset(
+  sources = "~/mimic/icu/chartevents.csv.gz", 
+  format = "csv"
+)
+filtered_dataset_Q3 <- dataset_arrow_Q3 %>%
+  filter(itemid %in% c(220045, 220181, 220179, 223761, 220210)) %>%
+  select(subject_id, itemid, charttime, value) %>%
+  collect()
+nrow(filtered_dataset_Q3)
+head(filtered_dataset_Q3, 10)
+```
 
 Document the steps and show code. Display the number of rows and the first 10 rows of the result tibble.
 
