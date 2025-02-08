@@ -41,8 +41,6 @@ In this exercise, we explore various tools for ingesting the [MIMIC-IV](https://
 Display the contents of MIMIC `hosp` and `icu` data folders:
 
 ```{bash}
-# set relative path
-ln -s /Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/mimic-iv-3.1 ~/mimic
 ls -l ~/mimic/hosp/
 ```
 
@@ -227,11 +225,10 @@ filter_arrow <- dataset_arrow %>%
 head(filter_arrow, 10)
 nrow(filter_arrow)
 system.time(filter_arrow <- dataset_arrow %>%
-  select(subject_id, itemid, charttime, valuenum) %>%
-  filter(
-    itemid %in% c(
-      50912, 50971, 50983, 50902, 
-      50882, 51221, 51301, 50931)
+              select(subject_id, itemid, charttime, valuenum) %>%
+              filter(
+                itemid %in% c(50912, 50971, 50983, 50902, 
+                              50882, 51221, 51301, 50931)
   ) %>%
   collect())
 ```
@@ -262,18 +259,19 @@ arrow::write_dataset(
 )
 file_size_bytes <- file.info("part-0.parquet")$size
 file_size_gb <- file_size_bytes / (1024^3)
+# Calculate the time for ingesting parquet file and filtering it.
 system.time({
   dataset_parquet <- arrow::open_dataset("~/mimic/part-0.parquet")   
   filter_parquet <- dataset_parquet %>%
-  select(subject_id, itemid, charttime, valuenum) %>%
-  filter(
-    itemid %in% c(
+    select(subject_id, itemid, charttime, valuenum) %>%
+    filter(
+      itemid %in% c(
       50912, 50971, 50983, 50902, 
       50882, 51221, 51301, 50931
-    )
-  ) %>%
+      )
+    ) %>%
   collect()
-  })
+})
 head(filter_parquet, 10)
 nrow(filter_parquet)
 
@@ -296,6 +294,7 @@ dataset_parquet_Q2.6 <- open_dataset(
   format = "parquet"
 )
 con <- dbConnect(duckdb::duckdb())
+# Calculate the time for converting duckDB file and filtering it
 system.time({
   # Convert Parquet dataset to DuckDB
   dataset_duckdb <- arrow::to_duckdb(dataset_parquet_Q2.6, con)
