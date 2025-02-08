@@ -141,7 +141,7 @@ it took too long time more than 10 minutes and I aborted the program.
 ### Q2.2 Ingest selected columns of `labevents.csv.gz` by `read_csv`
 
 Try to ingest only columns `subject_id`, `itemid`, `charttime`, and `valuenum` in `labevents.csv.gz` using `read_csv`.  Does this solve the ingestion issue? (Hint: `col_select` argument in `read_csv`.)
-```{r}
+```{r, eval=FALSE}
 read_csv("~/mimic/hosp/labevents.csv.gz",  
          col_select = c(subject_id,  
                         itemid,  
