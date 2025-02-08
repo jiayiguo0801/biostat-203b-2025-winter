@@ -41,6 +41,7 @@ In this exercise, we explore various tools for ingesting the [MIMIC-IV](https://
 Display the contents of MIMIC `hosp` and `icu` data folders:
 
 ```{bash}
+# set relative path
 ln -s /Users/guojiayi/Documents/study/2025winter/203b/biostat-203b-2025-winter/mimic-iv-3.1 ~/mimic
 ls -l ~/mimic/hosp/
 ```
@@ -138,21 +139,22 @@ Try to ingest `labevents.csv.gz` using `read_csv`. What happens? If it takes mor
 read_csv("~/mimic/hosp/labevents.csv.gz")
 ```
 #### Solution
-it took too long time and I aborted the program.
+it took too long time more than 10 minutes and I aborted the program.
 ### Q2.2 Ingest selected columns of `labevents.csv.gz` by `read_csv`
 
 Try to ingest only columns `subject_id`, `itemid`, `charttime`, and `valuenum` in `labevents.csv.gz` using `read_csv`.  Does this solve the ingestion issue? (Hint: `col_select` argument in `read_csv`.)
 ```{r}
-read_csv("~/mimic/hosp/labevents.csv.gz", 
-         col_select = c(subject_id, 
-                        itemid, 
-                        charttime, 
+read_csv("~/mimic/hosp/labevents.csv.gz",  
+         col_select = c(subject_id,  
+                        itemid,  
+                        charttime,  
                         valuenum
                         )
          )
 ```
 #### Solution
-it still took too long time and I aborted the program.
+it still took long time about ten minutes but I succeeded finally.
+I guess the dataset of selected columns is smaller so I can use read_csv to ingest.
 ### Q2.3 Ingest a subset of `labevents.csv.gz`
 
 <p align="center">
@@ -165,16 +167,19 @@ In later exercises, we will only be interested in the following lab items: creat
 ```{bash}
 #| eval: false
 zcat < ~/mimic/hosp/labevents.csv.gz | awk -F, '
-BEGIN {OFS = ","}
-{if ($5 == 50912 || $5 == 50971 || $5 == 50983 || 
-$5 == 50902 || $5 == 50882 || $5 == 51221 || 
-$5 == 51301 || $5 == 50931)
-{print $2, $5, $7, $10}
+BEGIN {OFS = ", "}
+{
+    if ($5 == 50912 || $5 == 50971 || $5 == 50983 || 
+        $5 == 50902 || $5 == 50882 || $5 == 51221 || 
+        $5 == 51301 || $5 == 50931)
+        {print $2, $5, $7, $10}
 }
 ' | gzip >  ~/mimic/labevents_filtered.csv.gz
 ```
 
 Display the first 10 lines of the new file `labevents_filtered.csv.gz`. How many lines are in this new file, excluding the header? How long does it take `read_csv` to ingest `labevents_filtered.csv.gz`?
+#### Solution
+There are 32679895 lines in the new file and it took ~16s to ingest the new file.
 ```{r}
 library(tidyverse)
 system.time({
@@ -199,10 +204,9 @@ gzcat ~/mimic/hosp/labevents.csv.gz > labevents.csv
 
 Then use [`arrow::open_dataset`](https://arrow.apache.org/docs/r/reference/open_dataset.html) to ingest `labevents.csv`, select columns, and filter `itemid` as in Q2.3. How long does the ingest+select+filter process take? Display the number of rows and the first 10 rows of the result tibble, and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
 #### Solution
-The process took approximate 60s.
+The process took approximate 60s. And the tibble has 32679896 rows.
 
 ```{r, eval=FALSE}
-install.packages("arrow")
 library(arrow)
 library(dplyr)
 
@@ -214,35 +218,26 @@ dataset_arrow <- arrow::open_dataset(
 filter_arrow <- dataset_arrow %>%
   select(subject_id, itemid, charttime, valuenum) %>%
   filter(
-    itemid == 50912 | 
-    itemid == 50971 | 
-    itemid == 50983 | 
-    itemid == 50902 | 
-    itemid == 50882 | 
-    itemid == 51221 | 
-    itemid == 51301 | 
-    itemid == 50931
-    ) %>%
+    itemid %in% c(
+      50912, 50971, 50983, 50902, 
+      50882, 51221, 51301, 50931
+    )
+  ) %>%
   collect()
 head(filter_arrow, 10)
 nrow(filter_arrow)
 system.time(filter_arrow <- dataset_arrow %>%
   select(subject_id, itemid, charttime, valuenum) %>%
   filter(
-    itemid == 50912 | 
-    itemid == 50971 | 
-    itemid == 50983 | 
-    itemid == 50902 | 
-    itemid == 50882 | 
-    itemid == 51221 | 
-    itemid == 51301 | 
-    itemid == 50931
-    ) %>%
+    itemid %in% c(
+      50912, 50971, 50983, 50902, 
+      50882, 51221, 51301, 50931)
+  ) %>%
   collect())
 ```
 
 Write a few sentences to explain what is Apache Arrow. Imagine you want to explain it to a layman in an elevator. 
-#### Solution
+#### Solution 
 The apache arrow is like a big square that we can use to take a new approach to parades. Without a square, we would have to call out each soldier and review them in turn, which is time-consuming. But apache arrow provides a square so that we can make the soldiers according to the order of the team into the square waiting for the parade, so do not have to review all the soldiers in turn, saving a lot of time. At the same time, we can also order the soldiers to enter the square in order, so we don't have to review all the soldiers, which saves a lot of time. And in this square the soldiers use a new language, not English or Spanish, so that all can understand each other.
 
 ### Q2.5 Compress `labevents.csv` to Parquet format and ingest/select/filter
@@ -272,15 +267,11 @@ system.time({
   filter_parquet <- dataset_parquet %>%
   select(subject_id, itemid, charttime, valuenum) %>%
   filter(
-    itemid == 50912 | 
-    itemid == 50971 | 
-    itemid == 50983 | 
-    itemid == 50902 | 
-    itemid == 50882 | 
-    itemid == 51221 | 
-    itemid == 51301 | 
-    itemid == 50931
-    ) %>%
+    itemid %in% c(
+      50912, 50971, 50983, 50902, 
+      50882, 51221, 51301, 50931
+    )
+  ) %>%
   collect()
   })
 head(filter_parquet, 10)
@@ -317,6 +308,7 @@ system.time({
     ) %>%
     collect()  
 })
+dbDisconnect(con, shutdown = TRUE)
 head(filter_duckdb, 10)
 nrow(filter_duckdb)
 ```
@@ -355,4 +347,6 @@ head(filtered_dataset_Q3, 10)
 ```
 
 Document the steps and show code. Display the number of rows and the first 10 rows of the result tibble.
+### Solution
+The file has 30195426 rows.
 
