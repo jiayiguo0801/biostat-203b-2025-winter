@@ -169,6 +169,11 @@ ICU stays are a subset of ADT history. This figure shows the vitals of the patie
 ![](10001217_icu.png)
 
 Do a similar visualization for the patient `10063848`.
+```{r}
+#chartevents <- read_csv_arrow("~/mimic/icu/chartevents.csv.gz")
+#write_dataset(chartevents, "chartevents.parquet", format = "parquet")
+
+```
 
 ## Q2. ICU stays
 
@@ -344,7 +349,8 @@ We are interested in the lab measurements of creatinine (50912), potassium (5097
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link.
 ```{r}
-
+labevents_tble <- icustays_tble |>
+  left_join
 ```
 
 ## Q6. Vitals from charted events
