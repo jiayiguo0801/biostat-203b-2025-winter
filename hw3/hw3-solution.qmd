@@ -48,6 +48,120 @@ Do a similar visualization for the patient with `subject_id` 10063848 using ggpl
 
 Hint: We need to pull information from data files `patients.csv.gz`, `admissions.csv.gz`, `transfers.csv.gz`, `labevents.csv.gz`, `procedures_icd.csv.gz`, `diagnoses_icd.csv.gz`, `d_icd_procedures.csv.gz`, and `d_icd_diagnoses.csv.gz`. For the big file `labevents.csv.gz`, use the Parquet format you generated in Homework 2. For reproducibility, make the Parquet folder `labevents_pq` available at the current working directory `hw3`, for example, by a symbolic link. Make your code reproducible.
 
+```{r}
+# Read all files
+patients <- read_csv("~/mimic/hosp/patients.csv.gz")
+admissions <- read_csv("~/mimic/hosp/admissions.csv.gz")
+transfers <- read_csv("~/mimic/hosp/transfers.csv.gz")
+labevents <- open_dataset("~/mimic/hosp/labevents.parquet")  # Read parquet
+procedures_icd <- read_csv("~/mimic/hosp/procedures_icd.csv.gz")
+d_icd_procedures <- read_csv("~/mimic/hosp/d_icd_procedures.csv.gz")
+diagnoses_icd <- read_csv("~/mimic/hosp/diagnoses_icd.csv.gz")
+d_icd_diagnoses <- read_csv("~/mimic/hosp/d_icd_diagnoses.csv.gz")
+head(procedures_icd, 10)
+print(d_icd_procedures)
+```
+```{r}
+# Filter the data
+patient10063848 <- patients |>
+  filter(subject_id == 10063848) |>
+  print()
+ADT10063848 <- admissions |>
+  filter(subject_id == 10063848) |>
+  left_join(transfers, by = c("subject_id", "hadm_id"))
+print(ADT10063848)
+ADT10063848 <- ADT10063848 |>
+  select(subject_id, hadm_id, eventtype, careunit, intime, outtime) |>
+  mutate(
+    intime_date = as.Date(intime),
+    outtime_date = as.Date(outtime)
+  ) |>
+  print(ADT10063848)
+
+# Labevents
+labs10063848 <- labevents |>
+  filter(subject_id == 10063848) |>
+  select(subject_id, charttime) |>
+  collect() |>
+  print() |>
+  mutate(
+    chartdate = as.Date(charttime)
+  )
+
+# Procedures
+procedures10063848 <- procedures_icd |>
+  filter(subject_id == 10063848) |>
+  left_join(d_icd_procedures, by = "icd_code") |>
+  select(subject_id, chartdate, long_title) |>
+  print()
+
+# Diagnoses
+diagnoses10063848 <- diagnoses_icd |>
+  filter(subject_id == 10063848) |>
+  left_join(d_icd_diagnoses, by = "icd_code") |>
+  slice_head(n = 3) |>
+  print()
+
+```
+graph
+```{r}
+ADT10063848 <- ADT10063848 %>%
+  mutate(is_icu = if_else
+         (grepl("ICU", careunit, ignore.case = TRUE), 3.5, 0.8))
+procedures10063848 <- procedures10063848 %>%
+  mutate(
+    procedure_type = case_when(
+      grepl("Small Intestine|Peritoneal Cavity", 
+            long_title) ~ "Abdominal Surgery",
+      grepl("Cardiac", long_title) ~ "Cardiac Surgery",
+      grepl("Infusion Device|Superior Vena Cava", 
+            long_title) ~ "Vascular Surgery",
+      TRUE ~ "Other"
+    ),
+    shape = case_when(
+      procedure_type == "Abdominal Surgery" ~ 16,  # Cycle
+      procedure_type == "Cardiac Surgery" ~ 17,   # Triangle
+      procedure_type == "Vascular Surgery" ~ 15,  # Square
+      TRUE ~ 19                                  # Default
+    )
+  )
+diagnoses_text <- paste(diagnoses10063848$long_title, collapse = "\n") |>
+  print()
+
+ggplot() +
+  geom_segment(
+    data = ADT10063848 |>
+      filter(careunit != "UNKNOWN"),
+    aes(
+      x = intime_date,
+      xend = outtime_date,
+      y = "ADT",
+      yend = "ADT",
+      color = careunit,
+      linewidth = is_icu
+    )
+  ) +
+  geom_point(
+  data = labs10063848,
+  aes(x = chartdate, y = "Lab"),
+  shape = 4, size = 3
+  ) +
+  geom_point(
+    data = procedures10063848,
+    aes(x = chartdate, y = "Procedure", shape = factor(shape), color = procedure_type),
+    size = 3
+  ) +
+  scale_shape_manual(values = c(16, 17, 15, 19)) +
+  labs(title = "Patient 10063848, F, 75 years old, white",
+       subtitle = diagnoses_text,
+       x = "Date",
+       y = "",
+       shape = "Procedure Type",
+       color = "Procedure Type") +
+  theme_minimal()
+
+```
+
 ### Q1.2 ICU stays
 
 ICU stays are a subset of ADT history. This figure shows the vitals of the patient `10001217` during ICU stays. The x-axis is the calendar time, and the y-axis is the value of the vital. The color of the line represents the type of vital. The facet grid shows the abbreviation of the vital and the stay ID.
@@ -182,6 +296,34 @@ patients_tble <- read_csv("~/mimic/hosp/patients.csv.gz")
 ### Q4.2 Summary and visualization
 
 Summarize variables `gender` and `anchor_age` by graphics, and explain any patterns you see.
+```{r}
+sum_patients <- patients_tble |>
+  summarise(gender, anchor_age) |>
+  print() |>
+# Boxplot
+sum_patients |>
+  ggplot(aes(x = gender, y = anchor_age)) +
+  geom_boxplot() +
+  theme_minimal()
+# Histogram
+ggplot(patients_tble, aes(x = anchor_age, fill = gender)) +
+  geom_histogram(binwidth = 5, position = "dodge", alpha = 0.7) +
+  labs(title = "Age Distribution by Gender (Histogram)",
+       x = "Anchor Age",
+       y = "Frequency",
+       fill = "Gender") +
+  theme_minimal()
+# Density
+ggplot(patients_tble, aes(x = anchor_age, fill = gender)) +
+  geom_density(alpha = 0.7) +
+  labs(title = "Age Distribution by Gender (Density Plot)",
+       x = "Anchor Age",
+       y = "Density",
+       fill = "Gender") +
+  theme_minimal()
+```
+**answer**
+Younger males are distributed in greater numbers than females, females are distributed in greater numbers than males between the ages of 40 and 80, and there are more people overall at younger ages and fewer at older ages, but the decreasing trend reverses at age 40 and there is another small peak at age 60.
 
 ## Q5. Lab results
 
@@ -201,6 +343,9 @@ We are interested in the lab measurements of creatinine (50912), potassium (5097
 
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link.
+```{r}
+
+```
 
 ## Q6. Vitals from charted events
 
