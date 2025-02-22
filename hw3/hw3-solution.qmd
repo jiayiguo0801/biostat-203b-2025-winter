@@ -754,9 +754,111 @@ ggplot(mimic_icu_cohort, aes(x = age_intime, y = los)) +
 ```
 
 - Length of ICU stay `los` vs the last available lab measurements before ICU stay
+```{r}
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(stringr)
 
+# Assume mimic_icu_cohort includes LOS and the last available lab measurements
+# For example, mimic_icu_cohort might have columns: los, Bicarbonate, Chloride, Creatinine, Glucose, Potassium, Sodium, Hematocrit, wbc
+
+# 1. Calculate correlation coefficients between los and each lab measurement
+lab_vars <- c("Bicarbonate", "Chloride", "Creatinine", "Glucose", "Potassium", "Sodium", "Hematocrit", "wbc")
+
+correlations <- mimic_icu_cohort %>%
+  select(los, all_of(lab_vars)) %>%
+  summarise(across(all_of(lab_vars), ~ cor(los, .x, use = "complete.obs"))) %>%
+  pivot_longer(everything(), names_to = "Variable", values_to = "Correlation")
+
+print(correlations)
+
+# 2. Create scatter plots with a linear regression line for each lab variable vs. los
+plots <- map(lab_vars, function(var) {
+  ggplot(mimic_icu_cohort, aes_string(x = var, y = "los")) +
+    geom_point(alpha = 0.3) +
+    geom_smooth(method = "lm", color = "blue", se = TRUE) +
+    labs(title = str_c("ICU LOS vs ", var),
+         x = var, y = "ICU Length of Stay (los)") +
+    theme_minimal()
+})
+
+# Display one of the plots (for example, the plot for Creatinine)
+print(plots[[3]])
+
+# Optionally, you can arrange all plots in a grid if desired:
+# library(patchwork)
+# wrap_plots(plots)
+
+```
 - Length of ICU stay `los` vs the first vital measurements within the ICU stay
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(purrr)
+library(stringr)
 
+# Assume mimic_icu_cohort has columns: los, HR, Systolic_BP, Diastolic_BP, BT, RR
+
+# 1. Calculate correlation coefficients between los and each vital measurement
+vital_vars <- c("HR", "NBPs", "NBPd", "BT", "RR")
+
+vital_correlations <- mimic_icu_cohort %>%
+  select(los, all_of(vital_vars)) %>%
+  summarise(across(all_of(vital_vars), ~ cor(los, .x, use = "complete.obs"))) %>%
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "Correlation")
+
+print(vital_correlations)
+
+# 2. Create scatter plots with a linear regression line for each vital variable vs. los
+vital_plots <- map(vital_vars, function(var) {
+  ggplot(mimic_icu_cohort, aes_string(x = var, y = "los")) +
+    geom_point(alpha = 0.3) +
+    geom_smooth(method = "lm", color = "blue", se = TRUE) +
+    labs(title = str_c("ICU LOS vs ", var),
+         x = var, y = "ICU Length of Stay (los)") +
+    theme_minimal()
+})
+
+# Display one example plot (for instance, BT vs los)
+print(vital_plots[[4]])
+
+# Optionally, arrange all plots in a grid if desired:
+# library(patchwork)
+# wrap_plots(vital_plots)
+
+```
 - Length of ICU stay `los` vs first ICU unit
+```{r}
+library(dplyr)
+library(ggplot2)
+library(forcats)
 
+# Assume mimic_icu_cohort has columns:
+# - los: Length of ICU stay
+# - first_careunit: The first ICU unit (e.g., MICU, SICU, etc.)
+
+# 1. Numerical Summary: Compute group-level summaries for each ICU unit
+los_summary <- mimic_icu_cohort %>%
+  group_by(first_careunit) %>%
+  summarise(
+    mean_los = mean(los, na.rm = TRUE),
+    median_los = median(los, na.rm = TRUE),
+    iqr_los = IQR(los, na.rm = TRUE),
+    n = n()
+  )
+print(los_summary)
+
+# 2. Graphical Summary: Create a boxplot of ICU LOS by first ICU unit
+ggplot(mimic_icu_cohort, aes(x = fct_infreq(first_careunit), y = los)) +
+  geom_boxplot(fill = "skyblue", outlier.color = "red") +
+  labs(title = "ICU Length of Stay by First ICU Unit",
+       x = "First ICU Unit",
+       y = "ICU Length of Stay (los)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+```
 
