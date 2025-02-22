@@ -61,6 +61,7 @@ d_icd_diagnoses <- read_csv("~/mimic/hosp/d_icd_diagnoses.csv.gz")
 head(procedures_icd, 10)
 print(d_icd_procedures)
 ```
+select the data
 ```{r}
 # Filter the data
 patient10063848 <- patients |>
@@ -103,7 +104,7 @@ diagnoses10063848 <- diagnoses_icd |>
   print()
 
 ```
-graph
+generate the graph
 ```{r}
 ADT10063848 <- ADT10063848 %>%
   mutate(is_icu = if_else
@@ -169,9 +170,156 @@ ICU stays are a subset of ADT history. This figure shows the vitals of the patie
 ![](10001217_icu.png)
 
 Do a similar visualization for the patient `10063848`.
+
+```{r, #| eval: false}
+library(arrow)
+library(data.table)
+
+csv_file <- "~/mimic/icu/chartevents.csv.gz"
+parquet_dir <- "chartevents_pq"
+
+system(paste("gunzip -k", csv_file))  # Depress
+unzipped_file <- sub(".gz$", "", csv_file)
+
+csv_file <- "~/mimic/icu/chartevents.csv"
+num_rows <- fread(csv_file, select = 1, showProgress = TRUE)[, .N]
+print(num_rows)
+
+
+chartevent_arrow <- arrow::open_dataset(
+  sources = "~/mimic/icu/chartevents.csv",
+  schema = NULL,
+  format = "csv"
+) 
+print(chartevent_arrow)
+nrow(chartevent_arrow)
+
+arrow::write_dataset(
+  chartevent_arrow,
+  path = "~/mimic/icu",
+  format = "parquet"
+)
+
+# Rename the file in terminal
+# Open the file
+chartevent_parquet <- arrow::open_dataset(
+  sources = "~/mimic/icu/chartevents.parquet"
+)
+nrow(chartevent_parquet)
+```
+filter the data 
 ```{r}
-#chartevents <- read_csv_arrow("~/mimic/icu/chartevents.csv.gz")
-#write_dataset(chartevents, "chartevents.parquet", format = "parquet")
+vital_10063848 <- open_dataset("~/mimic/icu/chartevents.parquet") |>
+  filter(subject_id == 10063848) |>
+  collect()
+print(vital_10063848)
+
+# Open the file
+d_itemid <- read.csv("~/mimic/icu/d_items.csv.gz")
+print(d_itemid)
+# HR, NBPd, NBP, RR, temperature
+vitals_data <- vital_10063848 |>
+  left_join(d_itemid, by = "itemid") |>
+  filter(itemid %in% c(220045, 220179, 220180, 220210, 223761)) |>
+  select(subject_id, charttime, itemid, label, value) |>
+  print()
+
+```
+generate the graph
+```{r}
+library(dplyr)
+library(ggplot2)
+
+
+
+# 将时间转换为 POSIXct 类型并排序
+vitals_data <- vitals_data |>
+  mutate(charttime = as.POSIXct(charttime)) |>
+  arrange(subject_id, charttime)
+
+# 创建每六小时的时间窗口并筛选每个窗口的第一条记录
+vitals_data_filtered <- vitals_data |>
+  mutate(time_window = as.POSIXct(floor(as.numeric(charttime) / (6 * 3600)) * (6 * 3600), origin = "1970-01-01")) |>
+  group_by(subject_id, time_window, label) |>
+  slice_min(charttime) |>
+  ungroup()
+
+# 确保按时间排序
+vitals_data_filtered <- vitals_data_filtered %>%
+  arrange(subject_id, charttime)
+
+# 生成折线图
+ggplot(vitals_data_filtered, aes(x = charttime, y = value, color = label, group = label)) + 
+  geom_line() +  # 画线，强制按时间顺序连接
+  geom_point() +  # 在每个数据点上添加点
+  facet_wrap(~ label, scales = "free_y") +  # 按照生命体征分面，y轴自适应
+  labs(
+    title = "Vitals of Patient 10063848 during ICU Stay",
+    x = "Time",
+    y = "Vital Value",
+    color = "Vital Type"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12),
+    legend.position = "none"
+  )
+
+
+```
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# 1. 划分住院阶段：根据 intime 和 outtime 为数据添加 stage_id 标识
+head(vitals_data)
+vitals_data <- vitals_data |>
+  left_join(ADT10063848, by = "subject_id") |>
+  mutate(charttime = as.POSIXct(charttime)) |>
+  arrange(subject_id, charttime) |>
+  mutate(
+    stage_id = paste0("Stage ", dense_rank(intime_data.x))  # 每次住院阶段的唯一标识
+  )
+
+# 2. 为每个阶段生成单独的折线图
+stages <- unique(vitals_data$stage_id)  # 获取所有的住院阶段
+
+# 3. 循环处理每个阶段的数据，并生成图
+plots <- lapply(stages, function(stage) {
+  
+  # 选择特定阶段的数据
+  stage_data <- vitals_data |>
+    filter(stage_id == stage) |>
+    filter(label %in% c("Heart Rate", "Non Invasive Blood Pressure systolic", 
+                        "Non Invasive Blood Pressure diastolic", "Respiratory Rate", "Body Temperature")) |>
+    mutate(time_window = as.POSIXct(floor(as.numeric(charttime) / (6 * 3600)) * (6 * 3600), origin = "1970-01-01")) |>
+    group_by(subject_id, time_window, label) |>
+    slice_min(charttime) |>
+    ungroup() |>
+    arrange(subject_id, charttime)
+  
+  # 生成折线图
+  ggplot(stage_data, aes(x = charttime, y = value, color = label, group = label)) + 
+    geom_line() +  # 画线
+    geom_point() +  # 添加点
+    facet_wrap(~ label, scales = "free_y") +  # 按生命体征分面
+    labs(
+      title = paste("Vitals of Patient 10063848 during", stage),
+      x = "Time",
+      y = "Vital Value",
+      color = "Vital Type"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      strip.text = element_text(size = 12),
+      legend.position = "none"
+    )
+})
+
+# 4. 打印每个阶段的图
+plots  # 这将返回一个列表，包含每个住院阶段的图
 
 ```
 
@@ -350,35 +498,67 @@ We are interested in the lab measurements of creatinine (50912), potassium (5097
 
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link.
+
 ```{r}
 library(arrow)
-icustays_tble <- read_csv("~/mimic/icu/icustays.csv.gz")
-icustays_arrow <- as_arrow_table(icustays_tble)
-# Transform the data type
-icustays_arrow <- icustays_arrow %>%
-  mutate(subject_id = cast(subject_id, int64()))
-schema(icustays_arrow)
-# Load labevents
-labevents <- open_dataset("~/mimic/hosp/labevents.parquet")
-labevents_filtered <- labevents |>
-  filter(itemid %in% c(50912, 50971, 50983, 50902, 
-                       50882, 51221, 51301, 50931))
-labevents_tble <- icustays_arrow |>
-  select(subject_id, stay_id) |>
-  left_join(labevents_filtered, by = "subject_id") |>
-  select(subject_id, stay_id, itemid, storetime, value) |>
-  collect()
-head(labevents_tble, 10)
-nrow(labevents_tble)
+library(dplyr)
+library(tidyr)
+library(readr)
 
-# Load labitems
-d_labitems <- read_csv("~/mimic/hosp/d_labitems.csv.gz") |>
-  filter(itemid %in% c(50912, 50971, 50983, 50902, 
-                       50882, 51221, 51301, 50931)) |>
-  print()
+# Open icustays
+icustays <- read_csv("~/mimic/icu/icustays.csv.gz") %>%
+  select(subject_id, stay_id, intime) %>%
+  mutate(
+    subject_id = as.integer(subject_id),
+    stay_id = as.integer(stay_id)
+  )
+print(icustays)
+
+# Open labitems
+lab_itemids <- c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)
+d_labitems <- read_csv("~/mimic/hosp/d_labitems.csv.gz") %>%
+  mutate(itemid = as.integer(itemid)) %>%
+  filter(itemid %in% lab_itemids)
+print(d_labitems)
+
+# Join labitems
+# 应该在合并之前先转成长格式！！
+labevents <- open_dataset("~/mimic/hosp/labevents.parquet") %>%
+  filter(itemid %in% lab_itemids) %>%
+  select(subject_id, itemid, valuenum, storetime, hadm_id) %>%
+  mutate(itemid = as.integer(itemid)) %>%
+  left_join(d_labitems, by = "itemid") %>%
+  collect()
+
+# Get wider format
+# 
+labevents_wide <- labevents %>%
+  group_by(subject_id, hadm_id, storetime) %>%
+  pivot_wider(
+    names_from = label,
+    values_from = valuenum,
+    values_fill = NA,
+    values_fn = ~ .x[1]
+  ) %>%
+  ungroup() %>%
+  # Rename `White Blood Cells` to wbc
+  rename(wbc = `White Blood Cells`) %>%
+  select(subject_id, storetime, Bicarbonate, Chloride, Creatinine, Glucose,
+         Potassium, Sodium, Hematocrit, wbc)
+print(labevents_wide)
+
+# Join icustays
+labevents_tble <- icustays %>%
+  left_join(labevents_wide, by = "subject_id") %>%
+  filter(storetime < intime) %>%  
+  group_by(stay_id) %>%
+  slice_max(storetime, with_ties = FALSE) %>%  
+  ungroup() %>%
+  select(subject_id, stay_id, Bicarbonate, Chloride, Creatinine, Glucose,
+         Potassium, Sodium, Hematocrit, wbc)
+print(labevents_tble)
 
 ```
-
 ## Q6. Vitals from charted events
 
 `chartevents.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/icu/chartevents/>) contains all the charted data available for a patient. During their ICU stay, the primary repository of a patient’s information is their electronic chart. The `itemid` variable indicates a single measurement type in the database. The `value` variable is the value measured for `itemid`. The first 10 lines of `chartevents.csv.gz` are
@@ -396,6 +576,94 @@ We are interested in the vitals for ICU patients: heart rate (220045), systolic 
 ![](chartevents_tble.png)
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `chartevents_pq` folder available at the current working directory, for example, by a symbolic link.
+```{r}
+library(arrow)
+library(dplyr)
+library(tidyr)
+library(readr)
+
+# 1. 读取 ICU 住院数据，并保留必要变量
+icustays_tble <- read_csv("~/mimic/icu/icustays.csv.gz") %>%
+  select(subject_id, stay_id, intime, outtime) %>%
+  mutate(
+    subject_id = as.numeric(subject_id),
+    stay_id = as.integer(stay_id),
+    intime = as.POSIXct(intime),   # 假设数据中 intime 格式正确
+    outtime = as.POSIXct(outtime)
+  )
+print(icustays_tble)
+
+# 2. 读取 d_items 数据，并筛选出感兴趣的 itemid，同时转换 itemid 为 numeric
+d_items_tble <- read_csv("~/mimic/icu/d_items.csv.gz") %>%
+  mutate(itemid = as.integer(itemid)) %>%
+  filter(itemid %in% c(220045, 220179, 220180, 223761, 220210)) %>%
+  mutate(itemid = as.numeric(itemid))
+print(d_items_tble)
+
+# 3. 读取 chartevents 数据（Parquet 格式），筛选感兴趣的 itemid，
+#    并将 itemid 与 subject_id 转换为 numeric
+chartevents_raw <- open_dataset("~/mimic/icu/chartevents.parquet") %>%
+  filter(itemid %in% c(220045, 220179, 220180, 223761, 220210)) %>%
+  mutate(
+    itemid = as.numeric(itemid),
+    subject_id = as.numeric(subject_id)
+  ) %>%
+  collect()  # 将数据拉入 R 内存
+
+# 由于 Arrow 后端不支持 as.POSIXct()，在 collect() 后转换 charttime
+
+
+# 4. 限定 chartevents 数据：仅保留 icustays_tble 中的患者，
+#    并加入 ICU 时间信息（intime, outtime）以限制在 ICU 内的记录，
+#    再针对每个 ICU stay 和每个项目取 ICU 内首次测量记录
+chartevents_tble <- chartevents_raw %>%
+  # 仅保留 icustays 中的患者
+  semi_join(icustays_tble, by = "subject_id") %>%
+  # 加入 ICU 住院时间信息（这里通过 subject_id 连接，注意同一患者可能有多次 ICU 住院）
+  left_join(select(icustays_tble, subject_id, stay_id, intime, outtime),
+            by = "subject_id") %>%
+  # 保留 ICU 期间的记录
+  filter(charttime >= intime, charttime <= outtime) %>%
+  # 针对每个 ICU 住院（stay_id）和每个测量项目（itemid），按 charttime 排序后保留第一条记录
+  group_by(stay_id, itemid) %>%
+  arrange(charttime, .by_group = TRUE) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  # 加入 d_items_tble 中的 label 信息
+  left_join(select(d_items_tble, itemid, label), by = "itemid") %>%
+  # 保留关键变量
+  select(stay_id, subject_id, label, valuenum)
+  
+# 5. 转换为宽格式：每个 ICU 住院一行，列为各 vital 测量值
+chartevents_tble <- chartevents_tble %>%
+  pivot_wider(names_from = label, values_from = valuenum)
+
+# 6. 重命名变量：确保与题目要求一致
+# 假定 d_items_tble 中的 label 分别为：
+#   "Heart Rate" 
+#   "Non Invasive Blood Pressure systolic"
+#   "Non Invasive Blood Pressure diastolic"
+#   "Temperature Fahrenheit"
+#   "Respiratory Rate"
+chartevents_tble <- chartevents_tble %>%
+  rename(
+    HR = `Heart Rate`,
+    Systolic_BP = `Non Invasive Blood Pressure systolic`,
+    Diastolic_BP = `Non Invasive Blood Pressure diastolic`,
+    BT = `Temperature Fahrenheit`,
+    RR = `Respiratory Rate`
+  )
+
+print(chartevents_tble)
+
+
+```
+
+```{r}
+
+```
+
+
 
 ## Q7. Putting things together
 
