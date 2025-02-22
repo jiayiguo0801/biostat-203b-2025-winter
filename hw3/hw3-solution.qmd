@@ -26,6 +26,10 @@ library(memuse)
 library(pryr)
 library(R.utils)
 library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(stringr)
 ```
 
 Display your machine memory.
@@ -500,63 +504,61 @@ We are interested in the lab measurements of creatinine (50912), potassium (5097
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link.
 
 ```{r}
-library(arrow)
-library(dplyr)
-library(tidyr)
-library(readr)
-
-# Open icustays
+# Open icustays and select time
 icustays <- read_csv("~/mimic/icu/icustays.csv.gz") %>%
-  select(subject_id, stay_id, intime) %>%
-  mutate(
-    subject_id = as.integer(subject_id),
-    stay_id = as.integer(stay_id)
-  )
-print(icustays)
+  select(subject_id, stay_id, intime, outtime) %>%
+  print(icustays)
 
-# Open labitems
+
+# Open labitems 
 lab_itemids <- c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)
 d_labitems <- read_csv("~/mimic/hosp/d_labitems.csv.gz") %>%
-  mutate(itemid = as.integer(itemid)) %>%
-  filter(itemid %in% lab_itemids)
+  filter(itemid %in% lab_itemids) %>%
+  select(itemid, label)
 print(d_labitems)
 
-# Join labitems
-# 应该在合并之前先转成长格式！！
-labevents <- open_dataset("~/mimic/hosp/labevents.parquet") %>%
+# Open labevents and select
+labevents_filter <- open_dataset("~/mimic/hosp/labevents.parquet") %>%
   filter(itemid %in% lab_itemids) %>%
-  select(subject_id, itemid, valuenum, storetime, hadm_id) %>%
-  mutate(itemid = as.integer(itemid)) %>%
-  left_join(d_labitems, by = "itemid") %>%
+  select(subject_id, itemid, valuenum, storetime) %>%
   collect()
+# Join labitems
+labevents_filter <- labevents_filter %>%
+  arrange(subject_id, itemid) %>%
+  semi_join(icustays, by = c("subject_id")) %>% # Filter patients in icustay
+  left_join(d_labitems, by = "itemid") 
+print(labevents_filter)
 
 # Get wider format
-# 
-labevents_wide <- labevents %>%
-  group_by(subject_id, hadm_id, storetime) %>%
+labevents_icujoined <- labevents_filter %>% 
+  left_join(icustays, by = c("subject_id")) 
+print(labevents_icujoined)
+labevents_timefilter <- labevents_icujoined %>% 
+  group_by(stay_id) %>%
+  filter(storetime < intime) %>%
+  ungroup()
+print(labevents_timefilter) 
+labevents_timeselect <- labevents_timefilter %>%
+  group_by(subject_id, itemid, stay_id) %>%
+  arrange(storetime, .by_group = TRUE) %>%
+  # Keep only the last lab measurement
+  slice_tail(n = 1) %>%
+  ungroup() %>%
+  print()
+# Wide format
+labevents_tble <- labevents_timeselect %>%
+  # Delete column
+  select(-c(itemid, storetime, intime, outtime)) %>%
   pivot_wider(
     names_from = label,
-    values_from = valuenum,
-    values_fill = NA,
-    values_fn = ~ .x[1]
+    values_from = valuenum
   ) %>%
-  ungroup() %>%
   # Rename `White Blood Cells` to wbc
   rename(wbc = `White Blood Cells`) %>%
-  select(subject_id, storetime, Bicarbonate, Chloride, Creatinine, Glucose,
-         Potassium, Sodium, Hematocrit, wbc)
-print(labevents_wide)
+  print(width = Inf) 
 
-# Join icustays
-labevents_tble <- icustays %>%
-  left_join(labevents_wide, by = "subject_id") %>%
-  filter(storetime < intime) %>%  
-  group_by(stay_id) %>%
-  slice_max(storetime, with_ties = FALSE) %>%  
-  ungroup() %>%
-  select(subject_id, stay_id, Bicarbonate, Chloride, Creatinine, Glucose,
-         Potassium, Sodium, Hematocrit, wbc)
-print(labevents_tble)
+labevents_tble %>%
+  write_rds("labevents_tble.rds")
 
 ```
 ## Q6. Vitals from charted events
@@ -576,90 +578,79 @@ We are interested in the vitals for ICU patients: heart rate (220045), systolic 
 ![](chartevents_tble.png)
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `chartevents_pq` folder available at the current working directory, for example, by a symbolic link.
-```{r}
-library(arrow)
-library(dplyr)
-library(tidyr)
-library(readr)
 
-# 1. 读取 ICU 住院数据，并保留必要变量
-icustays_tble <- read_csv("~/mimic/icu/icustays.csv.gz") %>%
+```{r}
+# Open icustay
+icustays <- read_csv("~/mimic/icu/icustays.csv.gz") %>%
   select(subject_id, stay_id, intime, outtime) %>%
+  # Define the format
   mutate(
-    subject_id = as.numeric(subject_id),
+    subject_id = as.double(subject_id),
     stay_id = as.integer(stay_id),
-    intime = as.POSIXct(intime),   # 假设数据中 intime 格式正确
+    intime = as.POSIXct(intime),
     outtime = as.POSIXct(outtime)
   )
-print(icustays_tble)
+print(icustays)
 
-# 2. 读取 d_items 数据，并筛选出感兴趣的 itemid，同时转换 itemid 为 numeric
-d_items_tble <- read_csv("~/mimic/icu/d_items.csv.gz") %>%
+# Open d_items
+vital_itemids <- c(220045, 220179, 220180, 223761, 220210)
+d_items <- read_csv("~/mimic/icu/d_items.csv.gz") %>%
   mutate(itemid = as.integer(itemid)) %>%
-  filter(itemid %in% c(220045, 220179, 220180, 223761, 220210)) %>%
-  mutate(itemid = as.numeric(itemid))
-print(d_items_tble)
+  filter(itemid %in% vital_itemids) %>%
+  select(itemid, label)
+print(d_items)
 
-# 3. 读取 chartevents 数据（Parquet 格式），筛选感兴趣的 itemid，
-#    并将 itemid 与 subject_id 转换为 numeric
-chartevents_raw <- open_dataset("~/mimic/icu/chartevents.parquet") %>%
-  filter(itemid %in% c(220045, 220179, 220180, 223761, 220210)) %>%
-  mutate(
-    itemid = as.numeric(itemid),
-    subject_id = as.numeric(subject_id)
-  ) %>%
-  collect()  # 将数据拉入 R 内存
-
-# 由于 Arrow 后端不支持 as.POSIXct()，在 collect() 后转换 charttime
-
-
-# 4. 限定 chartevents 数据：仅保留 icustays_tble 中的患者，
-#    并加入 ICU 时间信息（intime, outtime）以限制在 ICU 内的记录，
-#    再针对每个 ICU stay 和每个项目取 ICU 内首次测量记录
-chartevents_tble <- chartevents_raw %>%
-  # 仅保留 icustays 中的患者
-  semi_join(icustays_tble, by = "subject_id") %>%
-  # 加入 ICU 住院时间信息（这里通过 subject_id 连接，注意同一患者可能有多次 ICU 住院）
-  left_join(select(icustays_tble, subject_id, stay_id, intime, outtime),
-            by = "subject_id") %>%
-  # 保留 ICU 期间的记录
-  filter(charttime >= intime, charttime <= outtime) %>%
-  # 针对每个 ICU 住院（stay_id）和每个测量项目（itemid），按 charttime 排序后保留第一条记录
-  group_by(stay_id, itemid) %>%
-  arrange(charttime, .by_group = TRUE) %>%
-  slice_head(n = 1) %>%
-  ungroup() %>%
-  # 加入 d_items_tble 中的 label 信息
-  left_join(select(d_items_tble, itemid, label), by = "itemid") %>%
-  # 保留关键变量
-  select(stay_id, subject_id, label, valuenum)
+# Open chartevents and select
+chartevents_filter <- open_dataset("~/mimic/icu/chartevents.parquet") %>%
+  filter(itemid %in% vital_itemids) %>%
+  select(subject_id, itemid, valuenum, storetime) %>%
+  collect()
   
-# 5. 转换为宽格式：每个 ICU 住院一行，列为各 vital 测量值
-chartevents_tble <- chartevents_tble %>%
-  pivot_wider(names_from = label, values_from = valuenum)
+# Keep patients in icustay
+chartevents_filter <- chartevents_filter %>%
+  arrange(subject_id, itemid) %>%
+  semi_join(icustays, by = "subject_id") %>%  
+  left_join(d_items, by = "itemid")
+print(chartevents_filter)
 
-# 6. 重命名变量：确保与题目要求一致
-# 假定 d_items_tble 中的 label 分别为：
-#   "Heart Rate" 
-#   "Non Invasive Blood Pressure systolic"
-#   "Non Invasive Blood Pressure diastolic"
-#   "Temperature Fahrenheit"
-#   "Respiratory Rate"
-chartevents_tble <- chartevents_tble %>%
+# Join icustay
+chartevents_icujoined <- chartevents_filter %>%
+  left_join(select(icustays, subject_id, stay_id, intime, outtime),
+            by = "subject_id")
+print(chartevents_icujoined)
+
+# Filter time data（during intime to outtime）
+chartevents_timefilter <- chartevents_icujoined %>%
+  group_by(stay_id) %>%
+  filter(storetime >= intime, storetime <= outtime) %>%  
+  ungroup()
+print(chartevents_timefilter)
+
+chartevents_timeselect <- chartevents_timefilter %>%
+  group_by(subject_id, itemid, stay_id) %>%
+  arrange(storetime, .by_group = TRUE) %>%
+  # Keep the first measurement
+  slice_head(n = 1) %>%
+  ungroup()
+print(chartevents_timeselect)
+
+# Change wider format
+chartevents_tble <- chartevents_timeselect %>%
+  # Delete column
+  select(-c(itemid, storetime, intime, outtime)) %>%
+  pivot_wider(names_from = label, values_from = valuenum) %>%
+  # Rename
   rename(
     HR = `Heart Rate`,
-    Systolic_BP = `Non Invasive Blood Pressure systolic`,
-    Diastolic_BP = `Non Invasive Blood Pressure diastolic`,
+    NBPs = `Non Invasive Blood Pressure systolic`,
+    NBPd = `Non Invasive Blood Pressure diastolic`,
     BT = `Temperature Fahrenheit`,
     RR = `Respiratory Rate`
-  )
-
+  ) 
 print(chartevents_tble)
+  
 
-
-```
-
-```{r}
+chartevents_tble %>% write_rds("chartevents_tble.rds")
 
 ```
 
@@ -678,16 +669,94 @@ Let us create a tibble `mimic_icu_cohort` for all ICU stays, where rows are all 
 The final `mimic_icu_cohort` should have one row per ICU stay and columns for each variable.
 
 ![](mimic_icu_cohort.png)
-
+```{r}
+icustays_tble <- read_csv("~/mimic/icu/icustays.csv.gz")
+patients_tble <- read_csv("~/mimic/hosp/patients.csv.gz")
+admissions_tble <- read_csv("~/mimic/hosp/admissions.csv.gz")
+labevents_tble <- read_rds("labevents_tble.rds")
+chartevents_tble <- read_rds("chartevents_tble.rds")
+mimic_icu_cohort <- icustays_tble %>%
+  left_join(admissions_tble, by = c("subject_id", "hadm_id")) %>%
+  left_join(patients_tble, by = c("subject_id")) %>%
+  left_join(labevents_tble, by = c("subject_id")) %>%
+  left_join(chartevents_tble, by = c("subject_id")) %>%
+  # compute age at intime
+  mutate(age_intime = anchor_age + year(intime) - anchor_year) %>%
+  # keep only patients aged over 18 at intime
+  filter(age_intime > 18) %>%
+  print(width = Inf)
+mimic_icu_cohort <- mimic_icu_cohort %>%
+  distinct(hadm_id, .keep_all = TRUE) %>%
+  select(-stay_id) %>%
+  print() 
+mimic_icu_cohort %>% write_rds("mimic_icu_cohort.rds")
+```
 ## Q8. Exploratory data analysis (EDA)
 
 Summarize the following information about the ICU stay cohort `mimic_icu_cohort` using appropriate numerics or graphs:
+```{r}
+head(mimic_icu_cohort, 5)
+```
 
 - Length of ICU stay `los` vs demographic variables (race, insurance, marital_status, gender, age at intime)
+```{r}
+library(dplyr)
+library(ggplot2)
+library(forcats)
+
+# Assuming mimic_icu_cohort has columns: los, race, insurance, marital_status, gender, and age_at_intime
+
+# Summary statistics by demographic groups:
+summary_by_race <- mimic_icu_cohort %>%
+  group_by(race) %>%
+  summarize(mean_los = mean(los, na.rm = TRUE),
+            median_los = median(los, na.rm = TRUE),
+            iqr_los = IQR(los, na.rm = TRUE),
+            n = n())
+print(summary_by_race)
+
+# Boxplot for LOS by Race
+ggplot(mimic_icu_cohort, aes(x = fct_infreq(race), y = los)) +
+  geom_boxplot(outlier.colour = "red", fill = "lightblue") +
+  labs(title = "ICU Length of Stay by Race",
+       x = "Race", y = "Length of ICU Stay (los)") +
+  theme_minimal()
+
+# Boxplot for LOS by Insurance
+ggplot(mimic_icu_cohort, aes(x = fct_infreq(insurance), y = los)) +
+  geom_boxplot(outlier.colour = "red", fill = "lightgreen") +
+  labs(title = "ICU Length of Stay by Insurance",
+       x = "Insurance", y = "Length of ICU Stay (los)") +
+  theme_minimal()
+
+# Boxplot for LOS by Marital Status
+ggplot(mimic_icu_cohort, aes(x = fct_infreq(marital_status), y = los)) +
+  geom_boxplot(outlier.colour = "red", fill = "lightyellow") +
+  labs(title = "ICU Length of Stay by Marital Status",
+       x = "Marital Status", y = "Length of ICU Stay (los)") +
+  theme_minimal()
+
+# Boxplot for LOS by Gender
+ggplot(mimic_icu_cohort, aes(x = gender, y = los)) +
+  geom_boxplot(outlier.colour = "red", fill = "lightpink") +
+  labs(title = "ICU Length of Stay by Gender",
+       x = "Gender", y = "Length of ICU Stay (los)") +
+  theme_minimal()
+
+# Scatterplot for Age vs LOS (or stratified boxplots by age groups)
+ggplot(mimic_icu_cohort, aes(x = age_intime, y = los)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm", color = "blue") +
+  labs(title = "Age at ICU Admission vs. Length of ICU Stay",
+       x = "Age at ICU Admission", y = "Length of ICU Stay (los)") +
+  theme_minimal()
+
+```
 
 - Length of ICU stay `los` vs the last available lab measurements before ICU stay
 
 - Length of ICU stay `los` vs the first vital measurements within the ICU stay
 
 - Length of ICU stay `los` vs first ICU unit
+
 
