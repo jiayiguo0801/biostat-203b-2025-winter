@@ -334,7 +334,9 @@ Younger males are distributed in greater numbers than females, females are distr
 
 `labevents.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/hosp/labevents/>) contains all laboratory measurements for patients. The first 10 lines are
 ```{bash}
-zcat < ~/mimic/hosp/labevents.csv.gz | head
+zcat < ~/mimic/hosp/labevents.csv.gz | head 
+zcat < ~/mimic/icu/icustays.csv.gz | head
+
 ```
 
 `d_labitems.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/hosp/d_labitems/>) is the dictionary of lab measurements. 
@@ -349,8 +351,32 @@ We are interested in the lab measurements of creatinine (50912), potassium (5097
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link.
 ```{r}
-labevents_tble <- icustays_tble |>
-  left_join
+library(arrow)
+icustays_tble <- read_csv("~/mimic/icu/icustays.csv.gz")
+icustays_arrow <- as_arrow_table(icustays_tble)
+# Transform the data type
+icustays_arrow <- icustays_arrow %>%
+  mutate(subject_id = cast(subject_id, int64()))
+schema(icustays_arrow)
+# Load labevents
+labevents <- open_dataset("~/mimic/hosp/labevents.parquet")
+labevents_filtered <- labevents |>
+  filter(itemid %in% c(50912, 50971, 50983, 50902, 
+                       50882, 51221, 51301, 50931))
+labevents_tble <- icustays_arrow |>
+  select(subject_id, stay_id) |>
+  left_join(labevents_filtered, by = "subject_id") |>
+  select(subject_id, stay_id, itemid, storetime, value) |>
+  collect()
+head(labevents_tble, 10)
+nrow(labevents_tble)
+
+# Load labitems
+d_labitems <- read_csv("~/mimic/hosp/d_labitems.csv.gz") |>
+  filter(itemid %in% c(50912, 50971, 50983, 50902, 
+                       50882, 51221, 51301, 50931)) |>
+  print()
+
 ```
 
 ## Q6. Vitals from charted events
