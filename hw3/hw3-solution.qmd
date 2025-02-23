@@ -231,32 +231,27 @@ vitals_data <- vital_10063848 |>
 ```
 generate the graph
 ```{r}
-library(dplyr)
-library(ggplot2)
-
-
-
-# 将时间转换为 POSIXct 类型并排序
 vitals_data <- vitals_data |>
   mutate(charttime = as.POSIXct(charttime)) |>
   arrange(subject_id, charttime)
-
-# 创建每六小时的时间窗口并筛选每个窗口的第一条记录
 vitals_data_filtered <- vitals_data |>
-  mutate(time_window = as.POSIXct(floor(as.numeric(charttime) / (6 * 3600)) * (6 * 3600), origin = "1970-01-01")) |>
+  mutate(time_window = 
+           as.POSIXct(floor(as.numeric(charttime) / (6 * 3600)) * (6 * 3600), 
+                      origin = "1970-01-01")) |>
   group_by(subject_id, time_window, label) |>
   slice_min(charttime) |>
   ungroup()
-
-# 确保按时间排序
 vitals_data_filtered <- vitals_data_filtered %>%
   arrange(subject_id, charttime)
 
-# 生成折线图
-ggplot(vitals_data_filtered, aes(x = charttime, y = value, color = label, group = label)) + 
-  geom_line() +  # 画线，强制按时间顺序连接
-  geom_point() +  # 在每个数据点上添加点
-  facet_wrap(~ label, scales = "free_y") +  # 按照生命体征分面，y轴自适应
+# Generate the plot
+ggplot(vitals_data_filtered, aes(x = charttime,
+                                 y = value, 
+                                 color = label, 
+                                 group = label)) + 
+  geom_line() +  
+  geom_point() +  
+  facet_wrap(~ label, scales = "free_y") +  
   labs(
     title = "Vitals of Patient 10063848 during ICU Stay",
     x = "Time",
@@ -270,60 +265,6 @@ ggplot(vitals_data_filtered, aes(x = charttime, y = value, color = label, group 
     legend.position = "none"
   )
 
-
-```
-```{r}
-library(dplyr)
-library(ggplot2)
-
-# 1. 划分住院阶段：根据 intime 和 outtime 为数据添加 stage_id 标识
-head(vitals_data)
-vitals_data <- vitals_data |>
-  left_join(ADT10063848, by = "subject_id") |>
-  mutate(charttime = as.POSIXct(charttime)) |>
-  arrange(subject_id, charttime) |>
-  mutate(
-    stage_id = paste0("Stage ", dense_rank(intime_data.x))  # 每次住院阶段的唯一标识
-  )
-
-# 2. 为每个阶段生成单独的折线图
-stages <- unique(vitals_data$stage_id)  # 获取所有的住院阶段
-
-# 3. 循环处理每个阶段的数据，并生成图
-plots <- lapply(stages, function(stage) {
-  
-  # 选择特定阶段的数据
-  stage_data <- vitals_data |>
-    filter(stage_id == stage) |>
-    filter(label %in% c("Heart Rate", "Non Invasive Blood Pressure systolic", 
-                        "Non Invasive Blood Pressure diastolic", "Respiratory Rate", "Body Temperature")) |>
-    mutate(time_window = as.POSIXct(floor(as.numeric(charttime) / (6 * 3600)) * (6 * 3600), origin = "1970-01-01")) |>
-    group_by(subject_id, time_window, label) |>
-    slice_min(charttime) |>
-    ungroup() |>
-    arrange(subject_id, charttime)
-  
-  # 生成折线图
-  ggplot(stage_data, aes(x = charttime, y = value, color = label, group = label)) + 
-    geom_line() +  # 画线
-    geom_point() +  # 添加点
-    facet_wrap(~ label, scales = "free_y") +  # 按生命体征分面
-    labs(
-      title = paste("Vitals of Patient 10063848 during", stage),
-      x = "Time",
-      y = "Vital Value",
-      color = "Vital Type"
-    ) +
-    theme_minimal() +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1),
-      strip.text = element_text(size = 12),
-      legend.position = "none"
-    )
-})
-
-# 4. 打印每个阶段的图
-plots  # 这将返回一个列表，包含每个住院阶段的图
 
 ```
 
@@ -670,22 +611,30 @@ The final `mimic_icu_cohort` should have one row per ICU stay and columns for ea
 
 ![](mimic_icu_cohort.png)
 ```{r}
-icustays_tble <- read_csv("~/mimic/icu/icustays.csv.gz")
-patients_tble <- read_csv("~/mimic/hosp/patients.csv.gz")
-admissions_tble <- read_csv("~/mimic/hosp/admissions.csv.gz")
-labevents_tble <- read_rds("labevents_tble.rds")
-chartevents_tble <- read_rds("chartevents_tble.rds")
-mimic_icu_cohort <- icustays_tble %>%
+icustays_tble <- read_csv("~/mimic/icu/icustays.csv.gz") %>%
+  print(width = Inf)
+patients_tble <- read_csv("~/mimic/hosp/patients.csv.gz") %>%
+  print(width = Inf)
+admissions_tble <- read_csv("~/mimic/hosp/admissions.csv.gz") %>%
+  print(width = Inf)
+labevents_tble <- read_rds("labevents_tble.rds") %>%
+  print(width = Inf)
+chartevents_tble <- read_rds("chartevents_tble.rds") %>%
+  print(width = Inf)
+mimic_icu_cohort_origin <- icustays_tble %>%
   left_join(admissions_tble, by = c("subject_id", "hadm_id")) %>%
   left_join(patients_tble, by = c("subject_id")) %>%
   left_join(labevents_tble, by = c("subject_id")) %>%
   left_join(chartevents_tble, by = c("subject_id")) %>%
+  distinct(stay_id, .keep_all = TRUE) %>%
+  print(width = Inf)
+mimic_icu_cohort_timefilter <- mimic_icu_cohort_origin %>%
   # compute age at intime
   mutate(age_intime = anchor_age + year(intime) - anchor_year) %>%
   # keep only patients aged over 18 at intime
   filter(age_intime > 18) %>%
   print(width = Inf)
-mimic_icu_cohort <- mimic_icu_cohort %>%
+mimic_icu_cohort <- mimic_icu_cohort_timefilter %>%
   distinct(hadm_id, .keep_all = TRUE) %>%
   select(-stay_id) %>%
   print() 
@@ -695,6 +644,7 @@ mimic_icu_cohort %>% write_rds("mimic_icu_cohort.rds")
 
 Summarize the following information about the ICU stay cohort `mimic_icu_cohort` using appropriate numerics or graphs:
 ```{r}
+mimic_icu_cohort <- read_rds("mimic_icu_cohort.rds")
 head(mimic_icu_cohort, 5)
 ```
 
@@ -720,7 +670,8 @@ ggplot(mimic_icu_cohort, aes(x = fct_infreq(race), y = los)) +
   geom_boxplot(outlier.colour = "red", fill = "lightblue") +
   labs(title = "ICU Length of Stay by Race",
        x = "Race", y = "Length of ICU Stay (los)") +
-  theme_minimal()
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 # Boxplot for LOS by Insurance
 ggplot(mimic_icu_cohort, aes(x = fct_infreq(insurance), y = los)) +
