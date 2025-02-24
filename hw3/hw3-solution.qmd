@@ -619,13 +619,17 @@ labevents_tble <- read_rds("labevents_tble.rds") %>%
   print(width = Inf)
 chartevents_tble <- read_rds("chartevents_tble.rds") %>%
   print(width = Inf)
+icustays_unique <- icustays_tble |>
+  distinct(stay_id, .keep_all = TRUE) |>
+  print()
 mimic_icu_cohort_origin <- icustays_tble %>%
   left_join(admissions_tble, by = c("subject_id", "hadm_id")) %>%
   left_join(patients_tble, by = c("subject_id")) %>%
   left_join(labevents_tble, by = c("subject_id")) %>%
   left_join(chartevents_tble, by = c("subject_id")) %>%
-  distinct(stay_id, .keep_all = TRUE) %>%
+  distinct(stay_id.x, .keep_all = TRUE) %>%
   print(width = Inf)
+print(mimic_icu_cohort_origin)
 mimic_icu_cohort_timefilter <- mimic_icu_cohort_origin %>%
   # compute age at intime
   mutate(age_intime = anchor_age + year(intime) - anchor_year) %>%
@@ -633,8 +637,7 @@ mimic_icu_cohort_timefilter <- mimic_icu_cohort_origin %>%
   filter(age_intime > 18) %>%
   print(width = Inf)
 mimic_icu_cohort <- mimic_icu_cohort_timefilter %>%
-  distinct(hadm_id, .keep_all = TRUE) %>%
-  select(-stay_id) %>%
+  distinct(stay_id.x, .keep_all = TRUE) %>%
   print() 
 mimic_icu_cohort %>% write_rds("mimic_icu_cohort.rds")
 ```
@@ -697,6 +700,11 @@ ggplot(mimic_icu_cohort, aes(x = age_intime, y = los)) +
   theme_minimal()
 
 ```
+**Answer**
+1. There are differences in icu length of stay by race, but based on the analysis of social realities, it should be more due to differences in insurance, economic conditions, etc. between racial backgrounds rather than physiological differences.
+2. Different insurance policies have an effect on the difference in length of stay in the ICU, and generally speaking, ICU stays are longer with insurance.
+3. Marital status and gender had little effect on the length of icu stay.
+4. There is an effect of age on the length of ICU stay, with ICU stays increasing at higher ages, but this trend falls after age 75.
 
 - Length of ICU stay `los` vs the last available lab measurements before ICU stay
 ```{r}
@@ -722,15 +730,14 @@ plots <- map(lab_vars, function(var) {
          x = var, y = "ICU Length of Stay (los)") +
     theme_minimal()
 })
-
-# Display one of the plots (for example, the plot for Creatinine)
-print(plots[[3]])
-
-# Optionally, you can arrange all plots in a grid if desired:
-# library(patchwork)
-# wrap_plots(plots)
+# Display all plots in a grid 
+library(patchwork)
+wrap_plots(plots)
 
 ```
+**Answer**
+There is a clear link between the values of the indicators from the images and the length of ICU stay, such as creatinine or white blood cell counts, which may indicate a poor vital status when they are very low. Specific associations should be discussed in conjunction with the normal range of the indicator.
+
 - Length of ICU stay `los` vs the first vital measurements within the ICU stay
 ```{r}
 # Calculate correlation coefficients between los and each vital measurement
@@ -755,14 +762,14 @@ vital_plots <- map(vital_vars, function(var) {
     theme_minimal()
 })
 
-# Display one example plot (for instance, BT vs los)
-print(vital_plots[[4]])
-
-# Optionally, arrange all plots in a grid if desired:
-# library(patchwork)
-# wrap_plots(vital_plots)
+# Display all plots in a grid
+library(patchwork)
+wrap_plots(vital_plots)
 
 ```
+**Answer**
+There is a correlation between vital sign measurements and length of icu admission, but it is not a simple linear relationship because the normal values of vital signs are a fluctuating range, above or below which there are problems. Values in a certain range can be thought of as indicating a very poor physiologic state, which also corresponds to a longer icu stay.
+
 - Length of ICU stay `los` vs first ICU unit
 ```{r}
 
@@ -789,4 +796,6 @@ ggplot(mimic_icu_cohort, aes(x = fct_infreq(first_careunit), y = los)) +
 
 
 ```
+**Answer**
+The first icu ward is associated with the patient's most urgent situation, so it also reflects the severity of the patient's situation. The graph generally shows that patients in the surgical icu have longer hospital stays.
 
