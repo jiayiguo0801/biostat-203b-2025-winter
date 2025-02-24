@@ -81,14 +81,13 @@ ADT10063848 <- ADT10063848 |>
     intime_date = as.Date(intime),
     outtime_date = as.Date(outtime)
   ) |>
-  print(ADT10063848)
+  print()
 
 # Labevents
 labs10063848 <- labevents |>
   filter(subject_id == 10063848) |>
   select(subject_id, charttime) |>
   collect() |>
-  print() |>
   mutate(
     chartdate = as.Date(charttime)
   )
@@ -97,16 +96,12 @@ labs10063848 <- labevents |>
 procedures10063848 <- procedures_icd |>
   filter(subject_id == 10063848) |>
   left_join(d_icd_procedures, by = "icd_code") |>
-  select(subject_id, chartdate, long_title) |>
-  print()
-
+  select(subject_id, chartdate, long_title) 
 # Diagnoses
 diagnoses10063848 <- diagnoses_icd |>
   filter(subject_id == 10063848) |>
   left_join(d_icd_diagnoses, by = "icd_code") |>
-  slice_head(n = 3) |>
-  print()
-
+  slice_head(n = 3) 
 ```
 generate the graph
 ```{r}
@@ -153,7 +148,8 @@ ggplot() +
   ) +
   geom_point(
     data = procedures10063848,
-    aes(x = chartdate, y = "Procedure", shape = factor(shape), color = procedure_type),
+    aes(x = chartdate, y = "Procedure", 
+        shape = factor(shape), color = procedure_type),
     size = 3
   ) +
   scale_shape_manual(values = c(16, 17, 15, 19)) +
@@ -175,7 +171,7 @@ ICU stays are a subset of ADT history. This figure shows the vitals of the patie
 
 Do a similar visualization for the patient `10063848`.
 
-```{r, #| eval: false}
+```{r,eval=FALSE}
 library(arrow)
 library(data.table)
 
@@ -296,7 +292,7 @@ nrow(icustays_tble)
 num_icustays <- icustays_tble |>
   group_by(subject_id) |>
   summarise(num_icustays_perid = n()) |>
-  print(width)
+  print()
 # Histogram
 ggplot(num_icustays, aes(x = num_icustays_perid)) +
   geom_histogram(binwidth = 1) +
@@ -319,7 +315,7 @@ ls -lh ~/mimic/hosp/admissions.csv.gz
 Import `admissions.csv.gz` as a tibble `admissions_tble`.
 ```{r}
 admissions_tble <- read_csv("~/mimic/hosp/admissions.csv.gz") |>
-  print(width)
+  print()
 ```
 
 ### Q3.2 Summary and visualization
@@ -340,7 +336,7 @@ According to the [MIMIC-IV documentation](https://mimic.mit.edu/docs/iv/about/co
 num_admission <- admissions_tble |>
   group_by(subject_id) |>
   summarise(num_admission_perpatient = n()) |>
-  print(width)
+  print()
 ggplot(num_admission, aes(x = num_admission_perpatient)) + 
   geom_histogram(binwidth = 1) +
   labs(title = "Distribution of numbers of admission per subject ID",
@@ -359,13 +355,16 @@ time_admissions <- admissions_tble |>
             ) 
 ggplot(time_admissions, aes(x = admission_hour)) +
   geom_histogram(binwidth = 1, fill = "blue", color = "black") +
-  labs(title = "Admission Hour Distribution", x = "Hour of Admission", y = "Frequency")
+  labs(title = "Admission Hour Distribution", x = "Hour of Admission", 
+       y = "Frequency")
 ggplot(time_admissions, aes(x = admission_minute)) +
   geom_histogram(binwidth = 1, fill = "blue", color = "black") +
-  labs(title = "Admission Minute Distribution", x = "Minute of Admission", y = "Frequency")
+  labs(title = "Admission Minute Distribution", x = "Minute of Admission",
+       y = "Frequency")
 ggplot(time_admissions, aes(x = length_of_stay)) +
   geom_histogram(binwidth = 1, fill = "blue", color = "black") +
-  labs(title = "Length of Hospital Stay", x = "Length of Stay (hours)", y = "Frequency")
+  labs(title = "Length of Hospital Stay", x = "Length of Stay (hours)", 
+       y = "Frequency")
 slice_max(time_admissions, n = 10, order_by = length_of_stay) |>
   print()
 slice_min(time_admissions, n = 10, order_by = length_of_stay) |>
@@ -397,7 +396,7 @@ Summarize variables `gender` and `anchor_age` by graphics, and explain any patte
 ```{r}
 sum_patients <- patients_tble |>
   summarise(gender, anchor_age) |>
-  print() |>
+  print() 
 # Boxplot
 sum_patients |>
   ggplot(aes(x = gender, y = anchor_age)) +
@@ -447,8 +446,7 @@ Hint: Use the Parquet format you generated in Homework 2. For reproducibility, m
 ```{r}
 # Open icustays and select time
 icustays <- read_csv("~/mimic/icu/icustays.csv.gz") %>%
-  select(subject_id, stay_id, intime, outtime) %>%
-  print(icustays)
+  select(subject_id, stay_id, intime, outtime)
 
 
 # Open labitems 
@@ -650,11 +648,7 @@ head(mimic_icu_cohort, 5)
 
 - Length of ICU stay `los` vs demographic variables (race, insurance, marital_status, gender, age at intime)
 ```{r}
-library(dplyr)
-library(ggplot2)
 library(forcats)
-
-# Assuming mimic_icu_cohort has columns: los, race, insurance, marital_status, gender, and age_at_intime
 
 # Summary statistics by demographic groups:
 summary_by_race <- mimic_icu_cohort %>%
@@ -706,25 +700,20 @@ ggplot(mimic_icu_cohort, aes(x = age_intime, y = los)) +
 
 - Length of ICU stay `los` vs the last available lab measurements before ICU stay
 ```{r}
-library(dplyr)
-library(ggplot2)
 library(purrr)
-library(stringr)
-
-# Assume mimic_icu_cohort includes LOS and the last available lab measurements
-# For example, mimic_icu_cohort might have columns: los, Bicarbonate, Chloride, Creatinine, Glucose, Potassium, Sodium, Hematocrit, wbc
-
-# 1. Calculate correlation coefficients between los and each lab measurement
-lab_vars <- c("Bicarbonate", "Chloride", "Creatinine", "Glucose", "Potassium", "Sodium", "Hematocrit", "wbc")
+# Calculate correlation coefficients between los and each lab measurement
+lab_vars <- c("Bicarbonate", "Chloride", "Creatinine", "Glucose", "Potassium", 
+              "Sodium", "Hematocrit", "wbc")
 
 correlations <- mimic_icu_cohort %>%
   select(los, all_of(lab_vars)) %>%
-  summarise(across(all_of(lab_vars), ~ cor(los, .x, use = "complete.obs"))) %>%
+  summarise(across(all_of(lab_vars), 
+                   ~ cor(los, .x, use = "complete.obs"))) %>%
   pivot_longer(everything(), names_to = "Variable", values_to = "Correlation")
 
 print(correlations)
 
-# 2. Create scatter plots with a linear regression line for each lab variable vs. los
+# Create scatter plots with a linear regression line 
 plots <- map(lab_vars, function(var) {
   ggplot(mimic_icu_cohort, aes_string(x = var, y = "los")) +
     geom_point(alpha = 0.3) +
@@ -744,25 +733,19 @@ print(plots[[3]])
 ```
 - Length of ICU stay `los` vs the first vital measurements within the ICU stay
 ```{r}
-library(dplyr)
-library(ggplot2)
-library(tidyr)
-library(purrr)
-library(stringr)
-
-# Assume mimic_icu_cohort has columns: los, HR, Systolic_BP, Diastolic_BP, BT, RR
-
-# 1. Calculate correlation coefficients between los and each vital measurement
+# Calculate correlation coefficients between los and each vital measurement
 vital_vars <- c("HR", "NBPs", "NBPd", "BT", "RR")
 
 vital_correlations <- mimic_icu_cohort %>%
   select(los, all_of(vital_vars)) %>%
-  summarise(across(all_of(vital_vars), ~ cor(los, .x, use = "complete.obs"))) %>%
-  pivot_longer(cols = everything(), names_to = "Variable", values_to = "Correlation")
+  summarise(across(all_of(vital_vars), 
+                   ~ cor(los, .x, use = "complete.obs"))) %>%
+  pivot_longer(cols = everything(), names_to = "Variable", 
+               values_to = "Correlation")
 
 print(vital_correlations)
 
-# 2. Create scatter plots with a linear regression line for each vital variable vs. los
+# Create scatter plots with a linear regression line for each vital variable 
 vital_plots <- map(vital_vars, function(var) {
   ggplot(mimic_icu_cohort, aes_string(x = var, y = "los")) +
     geom_point(alpha = 0.3) +
@@ -782,15 +765,9 @@ print(vital_plots[[4]])
 ```
 - Length of ICU stay `los` vs first ICU unit
 ```{r}
-library(dplyr)
-library(ggplot2)
+
 library(forcats)
-
-# Assume mimic_icu_cohort has columns:
-# - los: Length of ICU stay
-# - first_careunit: The first ICU unit (e.g., MICU, SICU, etc.)
-
-# 1. Numerical Summary: Compute group-level summaries for each ICU unit
+# Numerical Summary: Compute group-level summaries for each ICU unit
 los_summary <- mimic_icu_cohort %>%
   group_by(first_careunit) %>%
   summarise(
@@ -801,7 +778,7 @@ los_summary <- mimic_icu_cohort %>%
   )
 print(los_summary)
 
-# 2. Graphical Summary: Create a boxplot of ICU LOS by first ICU unit
+# Graphical Summary: Create a boxplot of ICU LOS by first ICU unit
 ggplot(mimic_icu_cohort, aes(x = fct_infreq(first_careunit), y = los)) +
   geom_boxplot(fill = "skyblue", outlier.color = "red") +
   labs(title = "ICU Length of Stay by First ICU Unit",
