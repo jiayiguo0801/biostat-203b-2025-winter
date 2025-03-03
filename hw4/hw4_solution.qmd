@@ -96,20 +96,28 @@ patients_tble <- tbl(con_bq, "patients") |>
 ### Q1.5 `labevents` data
 
 Connect to the `labevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the lab items listed in HW3. Only keep the last lab measurements (by `storetime`) before the ICU stay and pivot lab items to become variables/columns. Write all steps in _one_ chain of pipes.
+
 **steps**
+Get the lable file
+```{r}
+d_labitems_tble <- tbl(con_bq, "d_labitems")
+```
+Get the labevents
 ```{r}
 labevents_tble <- tbl(con_bq, "labevents") |>
   semi_join(icustays_tble, by = "hadm_id") |>
   filter(itemid %in% c(50912, 50971, 50983, 50902, 
                        50882, 51221, 51301, 50931)) |>
+  left_join(d_labitems_tble, by = "itemid") |>
   select(-subject_id) |>
   left_join(icustays_tble, by = "hadm_id") |>
-  select(subject_id, hadm_id, stay_id, intime, itemid, storetime, valuenum) |>
+  select(subject_id, stay_id, intime, itemid, storetime, valuenum, label) |>
   filter(storetime < intime) |>
   # Slice() isn’t supported in SQL so I use distince instead 
   arrange(stay_id, itemid, desc(storetime)) |>
   distinct(stay_id, itemid, .keep_all = TRUE) |>
-  pivot_wider(names_from = itemid, values_from = valuenum) |>
+  select(subject_id, stay_id, valuenum, label) |>
+  pivot_wider(names_from = label, values_from = valuenum) |>
   print(width = Inf)
   
   
@@ -122,21 +130,34 @@ lack lots of valuenum, is that normal?
 
 Connect to `chartevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the chart events listed in HW3. Only keep the first chart events (by `storetime`) during ICU stay and pivot chart events to become variables/columns. Write all steps in _one_ chain of pipes. Similary to HW3, if a vital has multiple measurements at the first `storetime`, average them.
 ```{r}
+d_items_tble <- tbl(con_bq, "d_items")
+```
+
+```{r}
 chartevents_tble <- tbl(con_bq, "chartevents") |>
   # Filter subjects appearing in icustay
   semi_join(icustays_tble, by = "stay_id") |>
   filter(itemid %in% c(220045, 220179, 220180, 223761, 220210)) |>
+  left_join(d_items_tble, by = "itemid") |>
   select(-subject_id) |>
   select(-hadm_id) |>
   # Get intime and stay_id
   left_join(icustays_tble, by = "stay_id") |>
   # Divide every icu stay and item
-  group_by(stay_id, itemid) |>
+  group_by(subject_id, stay_id, itemid) |>
   # Keep first measurement during icu stay
   filter(storetime >= intime) |>
-  arrange(storetime) |> # From the earliest 
-  distinct(storetime, .keep_all = TRUE) |>
-  print()
+  # Keep the smallest storetime
+  filter(storetime == min(storetime)) |>
+  # If there is only one measurement, the mean value is itself
+  mutate(avg_value = mean(valuenum)) |>
+  arrange(storetime) |>
+  distinct(itemid, .keep_all = TRUE) |>
+  ungroup() |>
+  select(c("subject_id", "stay_id", "label", "avg_value")) |>
+  pivot_wider(names_from = label, values_from = avg_value) |>
+  arrange(stay_id) |>
+  print(width = Inf)
 ```
 
 ### Q1.7 Put things together
