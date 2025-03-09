@@ -271,42 +271,7 @@ Although it is not a good practice to add big data files to Git, for grading pur
 ## Q2. Shiny app
 
 Develop a Shiny app for exploring the ICU cohort data created in Q1. The app should reside in the `mimiciv_shiny` folder. The app should contain at least two tabs. One tab provides easy access to the graphical and numerical summaries of variables (demographics, lab measurements, vitals) in the ICU cohort, using the `mimic_icu_cohort.rds` you curated in Q1. The other tab allows user to choose a specific patient in the cohort and display the patient's ADT and ICU stay information as we did in Q1 of HW3, by dynamically retrieving the patient's ADT and ICU stay information from BigQuery database. Again, do **not** ever add the BigQuery token to your Git repository. If you do so, you will lose 50 points.
-```{r}
-subject_id <- 10063848
-ggplot() +
-  geom_segment(
-    data = ADT10063848 |>
-      filter(careunit != "UNKNOWN"),
-    aes(
-      x = intime_date,
-      xend = outtime_date,
-      y = "ADT",
-      yend = "ADT",
-      color = careunit,
-      linewidth = is_icu
-    )
-  ) +
-  geom_point(
-  data = labs10063848,
-  aes(x = chartdate, y = "Lab"),
-  shape = 4, size = 3
-  ) +
-  geom_point(
-    data = procedures10063848,
-    aes(x = chartdate, y = "Procedure", 
-        shape = factor(shape), color = procedure_type),
-    size = 3
-  ) +
-  scale_shape_manual(values = c(16, 17, 15, 19)) +
-  labs(title = "Patient 10063848, F, 75 years old, white",
-       subtitle = diagnoses_text,
-       x = "Date",
-       y = "",
-       shape = "Procedure Type",
-       color = "Procedure Type") +
-  theme_minimal()
 
-```
 
 
 
