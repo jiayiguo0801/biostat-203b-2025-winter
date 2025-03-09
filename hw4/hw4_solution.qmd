@@ -185,38 +185,27 @@ mimic_icu_cohort <- icustays_tble |>
 Perform the following preprocessing steps. (i) Lump infrequent levels into "Other" level for `first_careunit`, `last_careunit`, `admission_type`, `admission_location`, and `discharge_location`. (ii) Collapse the levels of `race` into `ASIAN`, `BLACK`, `HISPANIC`, `WHITE`, and `Other`. (iii) Create a new variable `los_long` that is `TRUE` when `los` is greater than or equal to 2 days. (iv) Summarize the data using `tbl_summary()`, stratified by `los_long`. Hint: `fct_lump_n` and `fct_collapse` from the `forcats` package are useful.
 **step(i)**
 ```{r}
-table(mimic_icu_cohort$first_careunit) |>
-  print()
+table(mimic_icu_cohort$first_careunit) 
 mimic_icu_cohort$first_careunit <- fct_lump(mimic_icu_cohort$first_careunit,
-                                            n = 7) |>
-  print()
-table(mimic_icu_cohort$last_careunit) |>
-  print()
+                                            n = 7)
+table(mimic_icu_cohort$last_careunit)
 mimic_icu_cohort$last_careunit <- fct_lump(mimic_icu_cohort$last_careunit,
-                                            n = 7) |>
-  print()
-table(mimic_icu_cohort$admission_type) |>
-  print()
+                                            n = 7)
+table(mimic_icu_cohort$admission_type)
 mimic_icu_cohort$admission_type <- fct_lump(mimic_icu_cohort$admission_type,
-                                            n = 4) |>
-  print()
-table(mimic_icu_cohort$admission_location) |>
-  print()
+                                            n = 4)
+table(mimic_icu_cohort$admission_location)
 mimic_icu_cohort$admission_location <- fct_lump(
   mimic_icu_cohort$admission_location, 
-  n = 4) |>
-  print()
-table(mimic_icu_cohort$discharge_location) |>
-  print()
+  n = 4)
+table(mimic_icu_cohort$discharge_location)
 mimic_icu_cohort$discharge_location <- fct_lump(
   mimic_icu_cohort$discharge_location,
-  n = 4) |>
-  print()
+  n = 4)
 ```
 **step(ii)**
 ```{r}
-table(mimic_icu_cohort$race) |>
-  print()
+table(mimic_icu_cohort$race)
 mimic_icu_cohort <- mimic_icu_cohort |>
   mutate(
     race_total = case_when(
@@ -229,16 +218,14 @@ mimic_icu_cohort <- mimic_icu_cohort |>
   ) |>
   select(-race) |>
   rename(race = race_total)
-table(mimic_icu_cohort$race) |>
-  print()  
+table(mimic_icu_cohort$race)
 ```
 **(iii)**
 ```{r}
 mimic_icu_cohort <- mimic_icu_cohort |>
   mutate(
     los_long = if_else(los >= 2, TRUE, FALSE)
-  ) |>
-  print()
+  ) 
 ```
 **(iv)**
 ```{r}
