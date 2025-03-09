@@ -62,6 +62,7 @@ List all tables in the `mimiciv_3_1` database.
 dbListTables(con_bq)
 ```
 ```{r}
+# Install necessray data
 d_items_tble <- tbl(con_bq, "d_items")
 admissions_tble <- tbl(con_bq, "admissions")
 patients_tble <- tbl(con_bq, "patients")
