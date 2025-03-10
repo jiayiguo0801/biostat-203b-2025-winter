@@ -47,3 +47,8 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+.DS_Store
+0213lecture-note.Rmd
+20250208lec203B-note.qmd
+mimic-iv-3.1/
+
