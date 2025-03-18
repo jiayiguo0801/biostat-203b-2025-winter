@@ -1,0 +1,363 @@
+---
+title: "hw5"
+format: html
+---
+```{r}
+sessionInfo()
+```
+```{r}
+library(tidyverse)
+library(lubridate)
+library(miceRanger)
+library(dplyr)
+library(GGally)
+library(gtsummary)
+library(tidymodels)
+library(yardstick)
+
+```
+
+
+# Clean data and solve the missing value problem
+```{r}
+icu_cohort <- readRDS("../hw4/mimiciv_shiny/mimiciv_icu_cohort.rds") 
+icu_cohort |>
+  print(width = Inf)
+```
+check the missing value
+```{r}
+# check variables with more than 10000 missing values
+icu_cohort %>%
+  select_if(colSums(is.na(icu_cohort)) > 10000) %>%
+  colnames()
+# keep only variables with less than 10000 missing values
+icu_cohort_discard <- icu_cohort %>%
+  select_if(colSums(is.na(icu_cohort)) <= 10000) %>%
+  print(width = Inf)
+summary(icu_cohort_discard)
+```
+delete data collected after ICU intime
+```{r}
+icu_cohort_selected <- icu_cohort_discard |>
+  select(-c("stay_id.y", "stay_id.x", "outtime", "dischtime", 
+            "hospital_expire_flag", "last_careunit"))
+print(icu_cohort_selected)
+summary(icu_cohort_selected)
+```
+figure out missing value
+```{r}
+colMeans(is.na(icu_cohort_selected))
+# make a function to replace outliers to `NA`s
+winsorize <- function(x, lower=0.01, upper=0.99) {
+  qnt <- quantile(x, probs = c(lower, upper), na.rm = TRUE)
+  x[x < qnt[1]] <- qnt[1]
+  x[x > qnt[2]] <- qnt[2]
+  x
+}
+# replace the extrem data
+icu_cohort_replace <- icu_cohort_selected %>%
+  mutate(across(c("HR", "NBPs", "NBPd", "RR", "BT", 
+                  "Bicarbonate", "Chloride", "Creatinine", 
+                  "Glucose", "Potassium", "Sodium",
+                  "Hematocrit", "wbc"), winsorize))
+summary(icu_cohort_replace)
+```
+## keep cleaned data into a file
+fill in the missing value
+```{r}
+class(icu_cohort_replace)
+# delete all rows with NA in los
+icu_cohort_replace <- icu_cohort_replace |>
+  filter(!is.na(los)) |>
+  print()
+
+# delete unnessary columns
+icu_cohort_replace <- icu_cohort_replace |>
+  select(-c("admit_provider_id", "discharge_location")) |>
+  print()
+
+# fill in the NA value
+if (file.exists("icu_cohort_filled.rds")){
+  icu_cohort_filled <- read_rds("icu_cohort_filled.rds")
+}else{
+  imputed_data <- miceRanger(icu_cohort_replace, 
+                           m = 1,        
+                           max.depth = 8,
+                           num.trees = 50)  
+  icu_cohort_filled <- completeData(imputed_data)
+  icu_cohort_filled |>
+    write_rds("icu_cohort_filled.rds")
+}
+icu_cohort_model <- as.data.frame(icu_cohort_filled) |>
+  rename_with(~ gsub("^Dataset_1\\.", "", .x)) |>
+  select(
+    "los_long",  
+    "gender", "marital_status", "race", "first_careunit",
+    "Bicarbonate", "Chloride", "Creatinine", "Glucose", 
+    "Potassium", "Sodium", "Hematocrit", "wbc",
+    "HR", "NBPs", "NBPd", "RR", "BT",
+    "age_intime", "subject_id", "stay_id", "hadm_id"
+  ) |>
+  mutate(los_long = factor(los_long, levels = c(FALSE, TRUE))) |>
+  print()
+
+```
+# split the dataset
+```{r}
+set.seed(123)
+# arrange the data
+icu_cohort_model <- icu_cohort_model |>
+  arrange(subject_id, hadm_id, stay_id) |>
+  select(-c("subject_id",
+            "hadm_id",
+            "stay_id"))
+data_split <- initial_split(
+  icu_cohort_model,
+  strata = "los_long",
+  prop = 0.5
+)
+data_split
+icu_cohort_train <- training(data_split)
+dim(icu_cohort_train)
+icu_cohort_test <- testing(data_split)
+dim(icu_cohort_test)
+```
+## logestic regression
+create recipe
+```{r}
+logit_recipe <-
+  recipe(
+    los_long ~ .,
+    data = icu_cohort_train
+  ) |>
+  # create traditional dummy variables
+  step_dummy(all_nominal_predictors()) |>
+  # zero-variance filter
+  step_zv(all_numeric_predictors()) |> 
+  # center and scale numeric data
+  step_normalize(all_numeric_predictors()) |>
+  # estimate the means and standard deviations
+  # prep(training = Heart_other, retain = TRUE) |>
+  print()
+```
+set the model
+```{r}
+logit_mod <- 
+  logistic_reg(
+    penalty = tune(), 
+    mixture = tune()
+  ) |> 
+  set_engine("glmnet", standardize = FALSE) |>
+  print()
+```
+workflow
+```{r}
+logit_wf <- workflow() |>
+  add_recipe(logit_recipe) |>
+  add_model(logit_mod) |>
+  print()
+```
+tuning grid
+```{r}
+param_grid <- grid_regular(
+  penalty(range = c(-6, 3)), 
+  mixture(),
+  levels = c(100, 5)
+  ) |>
+  print()
+```
+Set cross-validation partitions.
+```{r}
+set.seed(123)
+folds <- vfold_cv(icu_cohort_train, v = 5)
+folds
+```
+Fit cross-validation
+```{r}
+(logit_fit <- logit_wf |>
+  tune_grid(
+    resamples = folds,
+    grid = param_grid,
+    metrics = metric_set(roc_auc, accuracy)
+    )) |>
+  system.time()
+logit_fit
+```
+Visualize CV results:
+```{r}
+logit_fit |>
+  # aggregate metrics from K folds
+  collect_metrics() |>
+  print(width = Inf) |>
+  filter(.metric == "roc_auc") |>
+  ggplot(mapping = aes(x = penalty, y = mean, color = factor(mixture))) +
+  geom_point() +
+  labs(x = "Penalty", y = "CV AUC") +
+  scale_x_log10()
+show_notes(logit_fit)
+```
+Show the top 5 models.
+```{r}
+logit_fit |>
+  show_best(metric = "roc_auc")
+```
+select the best model.
+```{r}
+best_logit <- logit_fit |>
+  select_best(metric = "roc_auc")
+best_logit
+```
+finalize the model
+```{r}
+# Final workflow
+final_wf <- logit_wf |>
+  finalize_workflow(best_logit)
+final_wf
+# Fit the whole training set, then predict the test cases
+final_fit <- 
+  final_wf |>
+  last_fit(data_split)
+final_fit
+# Test metrics
+final_fit |> 
+  collect_metrics()
+```
+predict the los
+```{r}
+# 提取测试集
+test_data <- testing(data_split)
+# 提取模型
+final_model <- extract_workflow(final_fit)
+# 预测概率
+prob_pred <- predict(final_model, new_data = icu_cohort_test, type = "prob")
+colnames(prob_pred)
+# 将概率转换为二分类（0.5 作为阈值）
+predict_class <- ifelse(prob_pred$.pred_TRUE > 0.5, TRUE, FALSE)
+# 计算混淆矩阵
+conf_matrix <- table(observed = test_data$los_long, predicted = predict_class)
+print(conf_matrix)
+accuracy <- (15301 + 10129) / (15301 + 8753 + 13040 + 10129)
+print(paste("Accuracy:", round(accuracy, 4)))
+sensitivity <- 10129 / (10129 + 13040)
+print(paste("Sensitivity:", round(sensitivity, 4)))
+specificity <- 15301 / (15301 + 8753)
+print(paste("Specificity:", round(specificity, 4)))
+
+```
+
+## Random forest
+```{r}
+rf_recipe <- 
+  recipe(
+    los_long ~ ., 
+    data = icu_cohort_train
+  ) |>
+  # # create traditional dummy variables (not necessary for random forest in R)
+  # step_dummy(all_nominal()) |>
+  # zero-variance filter
+  step_zv(all_numeric_predictors()) |>
+  # # center and scale numeric data (not necessary for random forest)
+  # step_normalize(all_numeric_predictors()) |>
+  # estimate the means and standard deviations
+  # prep(training = Heart_other, retain = TRUE) |>
+  print()
+```
+set the model
+```{r}
+rf_mod <- 
+  rand_forest(
+    mode = "classification",
+    # Number of predictors randomly sampled in each split
+    mtry = tune(),
+    # Number of trees in ensemble
+    trees = tune()
+  ) |> 
+  set_engine("ranger")
+rf_mod
+```
+workflow
+```{r}
+rf_wf <- workflow() |>
+  add_recipe(rf_recipe) |>
+  add_model(rf_mod)
+rf_wf
+```
+tuning grid
+```{r}
+param_grid <- grid_regular(
+  trees(range = c(100L, 500L)), 
+  mtry(range = c(1L, 5L)),
+  levels = c(5, 5)
+  )
+param_grid
+```
+fit cross-validation
+```{r}
+rm(accuracy)
+rf_fit <- rf_wf |>
+  tune_grid(
+    resamples = folds,
+    grid = param_grid,
+    metrics = metric_set(roc_auc, accuracy)
+    )
+rf_fit
+```
+visualize CV results
+```{r}
+rf_fit |>
+  collect_metrics() |>
+  print(width = Inf) |>
+  filter(.metric == "roc_auc") |>
+  ggplot(mapping = aes(x = trees, y = mean, color = factor(mtry))) +
+  geom_point() + 
+  # geom_line() + 
+  labs(x = "Num. of Trees", y = "CV AUC")
+```
+Show the top 5 models.
+```{r}
+rf_fit |>
+  show_best(metric = "roc_auc")
+
+# Let’s select the best model.
+best_rf <- rf_fit |>
+  select_best(metric = "roc_auc")
+best_rf
+```
+finalize the model
+```{r}
+# Final workflow
+final_wf <- rf_wf |>
+  finalize_workflow(best_rf)
+final_wf
+# Fit the whole training set, then predict the test cases
+final_fit <- 
+  final_wf |>
+  last_fit(data_split)
+final_fit
+# Test metrics
+final_fit |> 
+  collect_metrics()
+```
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
