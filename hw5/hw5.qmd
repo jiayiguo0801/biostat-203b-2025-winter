@@ -2,11 +2,16 @@
 title: "hw5"
 format: html
 ---
+# Predicting ICU duration
+Using the ICU cohort mimiciv_icu_cohort.rds you built in Homework 4, develop at least three machine learning approaches (logistic regression with enet regularization, random forest, boosting, SVM, MLP, etc) plus a model stacking approach for predicting whether a patient’s ICU stay will be longer than 2 days. You should use the los_long variable as the outcome. You algorithms can use patient demographic information (gender, age at ICU intime, marital status, race), ICU admission information (first care unit), the last lab measurements before the ICU stay, and first vital measurements during ICU stay as features. You are welcome to use any feature engineering techniques you think are appropriate; but make sure to not use features that are not available at an ICU stay’s intime. For instance, last_careunit cannot be used in your algorithms.
+## library
 ```{r}
 sessionInfo()
 ```
 ```{r}
 library(tidyverse)
+library(ggplot2)
+library(corrplot)
 library(lubridate)
 library(miceRanger)
 library(dplyr)
@@ -14,11 +19,17 @@ library(GGally)
 library(gtsummary)
 library(tidymodels)
 library(yardstick)
-
+library(dials)
+library(kernlab)
+library(ggthemes)
+library(naniar)
+library(kableExtra)
+library(stacks)
+library(vip)
 ```
 
 
-# Clean data and solve the missing value problem
+## Data preprocessing and feature engineering.
 ```{r}
 icu_cohort <- readRDS("../hw4/mimiciv_shiny/mimiciv_icu_cohort.rds") 
 icu_cohort |>
@@ -54,21 +65,21 @@ winsorize <- function(x, lower=0.01, upper=0.99) {
   x[x > qnt[2]] <- qnt[2]
   x
 }
-# replace the extrem data
+# replace the extrem data with NA
 icu_cohort_replace <- icu_cohort_selected %>%
   mutate(across(c("HR", "NBPs", "NBPd", "RR", "BT", 
                   "Bicarbonate", "Chloride", "Creatinine", 
                   "Glucose", "Potassium", "Sodium",
                   "Hematocrit", "wbc"), winsorize))
 summary(icu_cohort_replace)
-```
-## keep cleaned data into a file
-fill in the missing value
-```{r}
 class(icu_cohort_replace)
-# delete all rows with NA in los
+# delete all rows with NA in los_long, marital_status
 icu_cohort_replace <- icu_cohort_replace |>
-  filter(!is.na(los)) |>
+  filter(!is.na(los_long)) |>
+  filter(!is.na(marital_status)) |>
+  # also delete labevent NA rows
+  filter(!if_all(c("Bicarbonate", "Chloride", "Creatinine", "Glucose", 
+                   "Potassium", "Sodium", "Hematocrit", "wbc"), is.na)) |>
   print()
 
 # delete unnessary columns
@@ -76,6 +87,10 @@ icu_cohort_replace <- icu_cohort_replace |>
   select(-c("admit_provider_id", "discharge_location")) |>
   print()
 
+
+```
+### keep cleaned data in a file
+```{r}
 # fill in the NA value
 if (file.exists("icu_cohort_filled.rds")){
   icu_cohort_filled <- read_rds("icu_cohort_filled.rds")
@@ -90,6 +105,7 @@ if (file.exists("icu_cohort_filled.rds")){
 }
 icu_cohort_model <- as.data.frame(icu_cohort_filled) |>
   rename_with(~ gsub("^Dataset_1\\.", "", .x)) |>
+  # Keep necessary columns
   select(
     "los_long",  
     "gender", "marital_status", "race", "first_careunit",
@@ -99,14 +115,27 @@ icu_cohort_model <- as.data.frame(icu_cohort_filled) |>
     "age_intime", "subject_id", "stay_id", "hadm_id"
   ) |>
   mutate(los_long = factor(los_long, levels = c(FALSE, TRUE))) |>
+  mutate(age_intime = as.numeric(age_intime)) |>
   print()
-
 ```
-# split the dataset
+print the summary table
 ```{r}
-set.seed(123)
+summary_table <- icu_cohort_model %>% 
+  select("los_long",  
+    "gender", "marital_status", "race", "first_careunit",
+    "Bicarbonate", "Chloride", "Creatinine", "Glucose", 
+    "Potassium", "Sodium", "Hematocrit", "wbc",
+    "HR", "NBPs", "NBPd", "RR", "BT") |>
+  tbl_summary(by = los_long)
+summary_table
+```
+
+## split the dataset
+Partition data into 50% training set and 50% test set. Stratify partitioning according to los_long. For grading purpose, sort the data by subject_id, hadm_id, and stay_id and use the seed 203 for the initial data split. Below is the sample code.
+```{r}
+set.seed(203)
 # arrange the data
-icu_cohort_model <- icu_cohort_model |>
+icu_cohort_model_split <- icu_cohort_model |>
   arrange(subject_id, hadm_id, stay_id) |>
   select(-c("subject_id",
             "hadm_id",
@@ -122,8 +151,14 @@ dim(icu_cohort_train)
 icu_cohort_test <- testing(data_split)
 dim(icu_cohort_test)
 ```
-## logestic regression
-create recipe
+Set cross-validation partitions.
+```{r}
+set.seed(203)
+folds <- vfold_cv(icu_cohort_train, v = 5)
+folds
+```
+## Logistic Regression
+### Recipe
 ```{r}
 logit_recipe <-
   recipe(
@@ -140,7 +175,7 @@ logit_recipe <-
   # prep(training = Heart_other, retain = TRUE) |>
   print()
 ```
-set the model
+### Model
 ```{r}
 logit_mod <- 
   logistic_reg(
@@ -150,40 +185,35 @@ logit_mod <-
   set_engine("glmnet", standardize = FALSE) |>
   print()
 ```
-workflow
+### Workflow
 ```{r}
 logit_wf <- workflow() |>
   add_recipe(logit_recipe) |>
   add_model(logit_mod) |>
   print()
 ```
-tuning grid
+### Tuning grid
 ```{r}
 param_grid <- grid_regular(
-  penalty(range = c(-6, 3)), 
+  penalty(range = c(-6, 3)),  
   mixture(),
-  levels = c(100, 5)
+  levels = c(100, 5)            
   ) |>
   print()
 ```
-Set cross-validation partitions.
-```{r}
-set.seed(123)
-folds <- vfold_cv(icu_cohort_train, v = 5)
-folds
-```
-Fit cross-validation
+
+### Fit cross-validation
 ```{r}
 (logit_fit <- logit_wf |>
   tune_grid(
     resamples = folds,
     grid = param_grid,
-    metrics = metric_set(roc_auc, accuracy)
-    )) |>
-  system.time()
+    metrics = metric_set(roc_auc, accuracy),
+    control = control_stack_grid()
+    )) 
 logit_fit
 ```
-Visualize CV results:
+### Visualize CV results:
 ```{r}
 logit_fit |>
   # aggregate metrics from K folds
@@ -199,7 +229,8 @@ show_notes(logit_fit)
 Show the top 5 models.
 ```{r}
 logit_fit |>
-  show_best(metric = "roc_auc")
+  show_best(metric = "roc_auc") |>
+  print()
 ```
 select the best model.
 ```{r}
@@ -207,29 +238,31 @@ best_logit <- logit_fit |>
   select_best(metric = "roc_auc")
 best_logit
 ```
-finalize the model
+### Finalize the model
 ```{r}
 # Final workflow
-final_wf <- logit_wf |>
+final_logit_wf <- logit_wf |>
   finalize_workflow(best_logit)
-final_wf
+final_logit_wf
 # Fit the whole training set, then predict the test cases
-final_fit <- 
-  final_wf |>
+final_logit_fit <- 
+  final_logit_wf |>
   last_fit(data_split)
-final_fit
+final_logit_fit
 # Test metrics
-final_fit |> 
+final_logit_fit |> 
   collect_metrics()
 ```
-predict the los
+### Predict the los
 ```{r}
 # 提取测试集
 test_data <- testing(data_split)
 # 提取模型
-final_model <- extract_workflow(final_fit)
+final_model <- extract_fit_parsnip(final_logit_fit)
 # 预测概率
-prob_pred <- predict(final_model, new_data = icu_cohort_test, type = "prob")
+# 使用 final_fit 直接预测（推荐）
+prob_pred <- final_logit_fit %>% collect_predictions()
+
 colnames(prob_pred)
 # 将概率转换为二分类（0.5 作为阈值）
 predict_class <- ifelse(prob_pred$.pred_TRUE > 0.5, TRUE, FALSE)
@@ -246,6 +279,7 @@ print(paste("Specificity:", round(specificity, 4)))
 ```
 
 ## Random forest
+### Recipe
 ```{r}
 rf_recipe <- 
   recipe(
@@ -260,9 +294,10 @@ rf_recipe <-
   # step_normalize(all_numeric_predictors()) |>
   # estimate the means and standard deviations
   # prep(training = Heart_other, retain = TRUE) |>
+  step_nzv(all_predictors()) |>
   print()
 ```
-set the model
+### Model
 ```{r}
 rf_mod <- 
   rand_forest(
@@ -272,8 +307,20 @@ rf_mod <-
     # Number of trees in ensemble
     trees = tune()
   ) |> 
-  set_engine("ranger")
+  set_engine(
+    "ranger", importance = "impurity"
+  )
 rf_mod
+```
+
+### Tuning grid
+```{r}
+param_grid <- grid_regular(
+  trees(range = c(100L, 400L)), 
+  mtry(range = c(1L, 6L)),
+  levels = c(5, 5)
+  )
+param_grid
 ```
 workflow
 ```{r}
@@ -282,27 +329,19 @@ rf_wf <- workflow() |>
   add_model(rf_mod)
 rf_wf
 ```
-tuning grid
-```{r}
-param_grid <- grid_regular(
-  trees(range = c(100L, 500L)), 
-  mtry(range = c(1L, 5L)),
-  levels = c(5, 5)
-  )
-param_grid
-```
-fit cross-validation
+### Fit cross-validation
 ```{r}
 rm(accuracy)
 rf_fit <- rf_wf |>
   tune_grid(
     resamples = folds,
     grid = param_grid,
-    metrics = metric_set(roc_auc, accuracy)
+    metrics = metric_set(roc_auc, accuracy),
+    control = control_stack_grid()
     )
 rf_fit
 ```
-visualize CV results
+### Visualize CV results
 ```{r}
 rf_fit |>
   collect_metrics() |>
@@ -323,41 +362,157 @@ best_rf <- rf_fit |>
   select_best(metric = "roc_auc")
 best_rf
 ```
-finalize the model
+### Finalize the model
 ```{r}
 # Final workflow
-final_wf <- rf_wf |>
+final_rf_wf <- rf_wf |>
   finalize_workflow(best_rf)
-final_wf
+final_rf_wf
 # Fit the whole training set, then predict the test cases
-final_fit <- 
-  final_wf |>
+final_rf_fit <- 
+  final_rf_wf |>
   last_fit(data_split)
-final_fit
+final_rf_fit
 # Test metrics
-final_fit |> 
+final_rf_fit |> 
   collect_metrics()
 ```
+check features
+```{r}
+library(vip)
+final_rf_fit |> 
+  extract_fit_parsnip() |> 
+  vip(num_features = 18)  # 查看所有特征的重要性
+```
 
-
-
-
-
-
-
-
- 
-
-
-
-
-
-
-
-
-
-
-
+## XGBoost
+### Recipe
+```{r}
+gb_recipe <- 
+  recipe(
+    los_long ~ ., 
+    data = icu_cohort_train
+  ) |>
+  # create traditional dummy variables (necessary for xgboost)
+  step_dummy(all_nominal_predictors()) |>
+  # zero-variance filter
+  step_zv(all_numeric_predictors()) |> 
+  # estimate the means and standard deviations
+  # prep(training = Heart_other, retain = TRUE) |>
+  print()
+```
+### Model
+```{r}
+gb_mod <- 
+  boost_tree(
+    mode = "classification",
+    trees = 200, 
+    tree_depth = tune(),
+    learn_rate = tune()
+  ) |> 
+  set_engine("xgboost")
+gb_mod
+```
+### Tuning grid
+```{r}
+param_grid <- grid_regular(
+  tree_depth(range = c(1L, 6L)),
+  learn_rate(range = c(-5, 2), trans = log10_trans()),
+  levels = c(3, 10)
+  )
+param_grid
+```
+workflow
+```{r}
+gb_wf <- workflow() |>
+  add_recipe(gb_recipe) |>
+  add_model(gb_mod)
+gb_wf
+```
+### Fit cross-validation.
+```{r}
+gb_fit <- gb_wf |>
+  tune_grid(
+    resamples = folds,
+    grid = param_grid,
+    metrics = metric_set(roc_auc, accuracy),
+    control = control_stack_grid()
+    )
+gb_fit
+```
+### Visualize CV results
+```{r}
+gb_fit |>
+  collect_metrics() |>
+  print(width = Inf) |>
+  filter(.metric == "roc_auc") |>
+  ggplot(mapping = aes(x = learn_rate, y = mean, color = factor(tree_depth))) +
+  geom_point() +
+  labs(x = "Learning Rate", y = "CV AUC") +
+  scale_x_log10()
+# Show the top 5 models.
+gb_fit |>
+  show_best(metric = "roc_auc")
+# Let’s select the best model.
+best_gb <- gb_fit |>
+  select_best(metric = "roc_auc")
+best_gb
+```
+### Finalize our model
+```{r}
+# Final workflow
+final_gb_wf <- gb_wf |>
+  finalize_workflow(best_gb)
+final_gb_wf
+# Fit the whole training set, then predict the test cases
+final_gb_fit <- 
+  final_gb_wf |>
+  last_fit(data_split)
+final_gb_fit
+# Test metrics
+final_gb_fit |> 
+  collect_metrics()
+```
+## Model Stacking
+```{r}
+mimic_model_st <-
+  stacks() %>%
+  add_candidates(logit_fit) %>%
+  add_candidates(rf_fit) %>%
+  add_candidates(gb_fit) %>%
+  blend_predictions(
+    penalty = 10^(-6:2),
+    metrics = c("roc_auc", "accuracy")
+  ) %>%
+  fit_members()
+autoplot(mimic_model_st)
+autoplot(mimic_model_st, type = "weights")
+```
+### Predict
+```{r}
+mimic_pred <- icu_cohort_test %>%
+  bind_cols(predict(mimic_model_st, ., type = "prob"))
+yardstick::roc_auc(
+  mimic_pred,
+  truth = los_long,
+  contains(".pred_False")
+)
+```
+### Model Performance
+```{r}
+final_log <- extract_workflow(final_log_fit)
+final_log %>% 
+  extract_fit_parsnip() %>% 
+  vip()
+final_tree <- extract_workflow(final_gb_fit)
+final_tree %>% 
+  extract_fit_parsnip() %>% 
+  vip()
+final_rf <- extract_workflow(final_rf_fit)
+final_rf %>% 
+  extract_fit_parsnip() %>% 
+  vip()
+```
 
 
 
