@@ -118,9 +118,10 @@ icu_cohort_model <- as.data.frame(icu_cohort_filled) |>
   ) |>
   mutate(los_long = factor(los_long, levels = c(FALSE, TRUE))) |>
   mutate(age_intime = as.numeric(age_intime)) |>
+  mutate(gender = as.factor(gender)) |>
+  mutate(marital_status = as.factor(marital_status)) |>
+  mutate(race = as.factor(race)) |>
   print()
-icu_cohort_model <- as.h2o(icu_cohort_model)
-h2o.describe(icu_cohort_model)
 ```
 print the summary table
 ```{r}
@@ -154,437 +155,211 @@ icu_cohort_train <- training(data_split)
 dim(icu_cohort_train)
 icu_cohort_test <- testing(data_split)
 dim(icu_cohort_test)
-```
-Set cross-validation partitions.
-```{r}
-set.seed(203)
-folds <- vfold_cv(icu_cohort_train, v = 5)
-folds
+icu_cohort_train <- as.h2o(icu_cohort_train)
+icu_cohort_test <- as.h2o(icu_cohort_test)
 ```
 ## Logistic Regression
-### Recipe
-```{r}
-logit_recipe <-
-  recipe(
-    los_long ~ .,
-    data = icu_cohort_train
-  ) |>
-  # create traditional dummy variables
-  step_dummy(all_nominal_predictors()) |>
-  # zero-variance filter
-  step_zv(all_numeric_predictors()) |> 
-  # center and scale numeric data
-  step_normalize(all_numeric_predictors()) |>
-  # estimate the means and standard deviations
-  # prep(training = Heart_other, retain = TRUE) |>
-  print()
-```
 ### Model
 ```{r}
-logit_mod <- 
-  logistic_reg(
-    penalty = tune(), 
-    mixture = tune()
-  ) |> 
-  set_engine("glmnet", standardize = FALSE) |>
-  print()
-```
-### Workflow
-```{r}
-logit_wf <- workflow() |>
-  add_recipe(logit_recipe) |>
-  add_model(logit_mod) |>
-  print()
-```
-### Tuning grid
-```{r}
-param_grid <- grid_regular(
-  penalty(range = c(-6, 3)),  
-  mixture(),
-  levels = c(100, 5)            
-  ) |>
-  print()
+logit_mod_h2o <- h2o.glm(
+  x = c("gender", "marital_status", "race", "first_careunit",
+        "Bicarbonate", "Chloride", "Creatinine", "Glucose", 
+        "Potassium", "Sodium", "Hematocrit", "wbc",
+        "HR", "NBPs", "NBPd", "RR", "BT", "age_intime"),
+  y = "los_long",
+  training_frame = icu_cohort_train,
+  family = "binomial",
+  alpha = 0.5,
+  lambda_search = TRUE,
+  nfolds = 5,             
+  keep_cross_validation_predictions = TRUE
+)
 ```
 
-### Fit cross-validation
-```{r}
-if (file.exists("logit_fit.rds")) {
-  logit_fit <- readRDS("logit_fit.rds")
-  message("file exists, no need to train again")
-} else {
-  message("can't find logit_fit.rds，train logit_fit model.")
-  
-  logit_fit <- logit_wf |> 
-    tune_grid(
-      resamples = folds,  
-      grid = param_grid,
-      metrics = metric_set(roc_auc, accuracy),
-      control = control_stack_grid()
-    )
-
-  # save model
-  saveRDS(logit_fit, "logit_fit.rds")
-  message("logit_fit training finished and save as logit_fit.rds。")
-}
-```
 ### Visualize CV results:
 ```{r}
-logit_fit |>
-  # aggregate metrics from K folds
-  collect_metrics() |>
-  print(width = Inf) |>
-  filter(.metric == "roc_auc") |>
-  ggplot(mapping = aes(x = penalty, y = mean, color = factor(mixture))) +
-  geom_point() +
-  labs(x = "Penalty", y = "CV AUC") +
-  scale_x_log10()
-show_notes(logit_fit)
-```
-Show the top 5 models.
-```{r}
-logit_fit |>
-  show_best(metric = "roc_auc") |>
-  print()
-```
-select the best model.
-```{r}
-best_logit <- logit_fit |>
-  select_best(metric = "roc_auc")
-best_logit
-```
-### Finalize the model
-```{r}
-# Final workflow
-final_logit_wf <- logit_wf |>
-  finalize_workflow(best_logit)
-final_logit_wf
-# Fit the whole training set, then predict the test cases
-final_logit_fit <- 
-  final_logit_wf |>
-  last_fit(data_split)
-final_logit_fit
-# Test metrics
-final_logit_fit |> 
-  collect_metrics()
-```
-### Predict the los
-```{r}
-# 提取测试集
-test_data <- testing(data_split)
-# 提取模型
-final_model <- extract_fit_parsnip(final_logit_fit)
-# 预测概率
-# 使用 final_fit 直接预测（推荐）
-prob_pred <- final_logit_fit %>% collect_predictions()
-
-colnames(prob_pred)
-# 将概率转换为二分类（0.5 作为阈值）
-predict_class <- ifelse(prob_pred$.pred_TRUE > 0.5, TRUE, FALSE)
-# 计算混淆矩阵
-conf_matrix <- table(observed = test_data$los_long, predicted = predict_class)
-print(conf_matrix)
-accuracy <- (15301 + 10129) / (15301 + 8753 + 13040 + 10129)
-print(paste("Accuracy:", round(accuracy, 4)))
-sensitivity <- 10129 / (10129 + 13040)
-print(paste("Sensitivity:", round(sensitivity, 4)))
-specificity <- 15301 / (15301 + 8753)
-print(paste("Specificity:", round(specificity, 4)))
+h2o.varimp_plot(logit_mod_h2o)  
+h2o.performance(logit_mod_h2o)  
 
 ```
+
 
 ## Random forest
-### Recipe
-```{r}
-rf_recipe <- 
-  recipe(
-    los_long ~ ., 
-    data = icu_cohort_train
-  ) |>
-  # # create traditional dummy variables (not necessary for random forest in R)
-  # step_dummy(all_nominal()) |>
-  # zero-variance filter
-  step_zv(all_numeric_predictors()) |>
-  # # center and scale numeric data (not necessary for random forest)
-  # step_normalize(all_numeric_predictors()) |>
-  # estimate the means and standard deviations
-  # prep(training = Heart_other, retain = TRUE) |>
-  step_nzv(all_predictors()) |>
-  print()
-```
 ### Model
 ```{r}
-rf_mod <- 
-  rand_forest(
-    mode = "classification",
-    # Number of predictors randomly sampled in each split
-    mtry = tune(),
-    # Number of trees in ensemble
-    trees = tune()
-  ) |> 
-  set_engine(
-    "ranger", importance = "impurity"
-  )
-rf_mod
-```
+rf_mod_h2o <- h2o.randomForest(
+  x = c("gender", "marital_status", "race", "first_careunit",
+        "Bicarbonate", "Chloride", "Creatinine", "Glucose", 
+        "Potassium", "Sodium", "Hematocrit", "wbc",
+        "HR", "NBPs", "NBPd", "RR", "BT", "age_intime"),  
+  y = "los_long",         
+  training_frame = icu_cohort_train,  
+  ntrees = 100,           
+  mtries = -1,           
+  max_depth = 20,         
+  min_rows = 5,          
+  seed = 1234,           
+  nfolds = 5,
+  balance_classes = TRUE, 
+  keep_cross_validation_predictions = TRUE
+)
 
-### Tuning grid
-```{r}
-param_grid <- grid_regular(
-  trees(range = c(100L, 400L)), 
-  mtry(range = c(1L, 6L)),
-  levels = c(5, 5)
-  )
-param_grid
-```
-### Workflow
-```{r}
-rf_wf <- workflow() |>
-  add_recipe(rf_recipe) |>
-  add_model(rf_mod)
-rf_wf
-```
-### Fit cross-validation
-```{r}
-rm(accuracy)
-
-# Check if rf_fit.rds exists
-if (file.exists("rf_fit.rds")) {
-  # Load the model if the file exists
-  rf_fit <- readRDS("rf_fit.rds")
-  message("✅ Loaded rf_fit.rds. Skipping model training.")
-} else {
-  # Train the model if the file does not exist
-  message("⚠️ rf_fit.rds not found. Starting model training...")
-
-  rf_fit <- rf_wf |> 
-    tune_grid(
-      resamples = folds,  # Ensure the resampling object matches other models
-      grid = param_grid,
-      metrics = metric_set(roc_auc, accuracy),
-      control = control_stack_grid()
-    )
-
-  # Save the trained model
-  saveRDS(rf_fit, "rf_fit.rds")
-  message("✅ rf_fit training completed and saved as rf_fit.rds.")
-}
-
+print(rf_mod_h2o)
 ```
 ### Visualize CV results
 ```{r}
-rf_fit |>
-  collect_metrics() |>
-  print(width = Inf) |>
-  filter(.metric == "roc_auc") |>
-  ggplot(mapping = aes(x = trees, y = mean, color = factor(mtry))) +
-  geom_point() + 
-  # geom_line() + 
-  labs(x = "Num. of Trees", y = "CV AUC")
+h2o.varimp_plot(rf_mod_h2o)  
 ```
-Show the top 5 models.
-```{r}
-rf_fit |>
-  show_best(metric = "roc_auc")
-
-# Let’s select the best model.
-best_rf <- rf_fit |>
-  select_best(metric = "roc_auc")
-best_rf
-```
-### Finalize the model
-```{r}
-# Final workflow
-final_rf_wf <- rf_wf |>
-  finalize_workflow(best_rf)
-final_rf_wf
-# Fit the whole training set, then predict the test cases
-final_rf_fit <- 
-  final_rf_wf |>
-  last_fit(data_split)
-final_rf_fit
-# Test metrics
-final_rf_fit |> 
-  collect_metrics()
-```
-check features
-```{r}
-library(vip)
-final_rf_fit |> 
-  extract_fit_parsnip() |> 
-  vip(num_features = 18)  # 查看所有特征的重要性
-```
-
 ## XGBoost
-### Recipe
-```{r}
-gb_recipe <- 
-  recipe(
-    los_long ~ ., 
-    data = icu_cohort_train
-  ) |>
-  # create traditional dummy variables (necessary for xgboost)
-  step_dummy(all_nominal_predictors()) |>
-  # zero-variance filter
-  step_zv(all_numeric_predictors()) |> 
-  # estimate the means and standard deviations
-  # prep(training = Heart_other, retain = TRUE) |>
-  print()
-```
 ### Model
 ```{r}
-gb_mod <- 
-  boost_tree(
-    mode = "classification",
-    trees = 200, 
-    tree_depth = tune(),
-    learn_rate = tune()
-  ) |> 
-  set_engine("xgboost")
-gb_mod
-```
-### Tuning grid
-```{r}
-param_grid <- grid_regular(
-  tree_depth(range = c(1L, 6L)),
-  learn_rate(range = c(-5, 2), trans = log10_trans()),
-  levels = c(3, 10)
-  )
-param_grid
-```
-workflow
-```{r}
-gb_wf <- workflow() |>
-  add_recipe(gb_recipe) |>
-  add_model(gb_mod)
-gb_wf
-```
-### Fit cross-validation.
-```{r}
-# Check if gb_fit.rds exists
-if (file.exists("gb_fit.rds")) {
-  # Load the model if the file exists
-  gb_fit <- readRDS("gb_fit.rds")
-  message("✅ Loaded gb_fit.rds. Skipping model training.")
-} else {
-  # Train the model if the file does not exist
-  message("⚠️ gb_fit.rds not found. Starting model training...")
+gb_mod_h2o <- h2o.gbm(
+  x = c("gender", "marital_status", "race", "first_careunit",
+        "Bicarbonate", "Chloride", "Creatinine", "Glucose", 
+        "Potassium", "Sodium", "Hematocrit", "wbc",
+        "HR", "NBPs", "NBPd", "RR", "BT", "age_intime"),  
+  y = "los_long",         
+  training_frame = icu_cohort_train,  
+  ntrees = 200,           
+  max_depth = 6,          
+  learn_rate = 0.05,      
+  sample_rate = 0.8,      
+  col_sample_rate = 0.8,  
+  seed = 1234,            
+  nfolds = 5,
+  keep_cross_validation_predictions = TRUE
+)
 
-  gb_fit <- gb_wf |> 
-    tune_grid(
-      resamples = folds,  # Ensure the resampling object matches other models
-      grid = param_grid,
-      metrics = metric_set(roc_auc, accuracy),
-      control = control_stack_grid()
-    )
-
-  # Save the trained model
-  saveRDS(gb_fit, "gb_fit.rds")
-  message("✅ gb_fit training completed and saved as gb_fit.rds.")
-}
+print(gb_mod_h2o)
 
 ```
+
+
 ### Visualize CV results
 ```{r}
-gb_fit |>
-  collect_metrics() |>
-  print(width = Inf) |>
-  filter(.metric == "roc_auc") |>
-  ggplot(mapping = aes(x = learn_rate, y = mean, color = factor(tree_depth))) +
-  geom_point() +
-  labs(x = "Learning Rate", y = "CV AUC") +
-  scale_x_log10()
-# Show the top 5 models.
-gb_fit |>
-  show_best(metric = "roc_auc")
-# Let’s select the best model.
-best_gb <- gb_fit |>
-  select_best(metric = "roc_auc")
-best_gb
-```
-### Finalize our model
-```{r}
-# Final workflow
-final_gb_wf <- gb_wf |>
-  finalize_workflow(best_gb)
-final_gb_wf
-# Fit the whole training set, then predict the test cases
-final_gb_fit <- 
-  final_gb_wf |>
-  last_fit(data_split)
-final_gb_fit
-# Test metrics
-final_gb_fit |> 
-  collect_metrics()
+h2o.varimp_plot(gb_mod_h2o)  
 ```
 ## Model Stacking
 ```{r}
-library(parallel)
-cl <- makeCluster(4) # 限制最大使用 4 核
-registerDoParallel(cl)
-# Step 1: 生成 mimic_model_st 并 blend_predictions()
-if (file.exists("mimic_model_step1.rds")) {
-  # 如果中间文件已存在，则直接加载
-  mimic_model_st <- readRDS("mimic_model_step1.rds")
-  message("mimic_model_step1.rds esists")
-} else {
-  # 如果文件不存在，则重新创建 stacks() 模型
-  message("can't find mimic_model_step1.rds，start stacking model fit")
-  
-  mimic_model_st <- stacks() %>%
-    add_candidates(logit_fit) %>%
-    add_candidates(rf_fit) %>%
-    add_candidates(gb_fit) %>%
-    blend_predictions(penalty = 10^(-6:2), metrics = metric_set(roc_auc, accuracy))
-  
-  # 保存中间模型
-  saveRDS(mimic_model_st, "mimic_model_step1.rds")
-  message("mimic_model_step1 save as mimic_model_step1.rds。")
-}
+feature_columns <- setdiff(names(icu_cohort_train), "los_long")
 
-# Step 2: 进行 fit_members()，生成最终模型
-if (file.exists("mimic_model_final.rds")) {
-  # 如果最终模型已存在，则直接加载
-  mimic_model_st <- readRDS("mimic_model_final.rds")
-  message("mimic_model_final.rds exists")
-} else {
-  # 如果文件不存在，则继续执行 fit_members()
-  message("can't find mimic_model_final.rds")
-  
-  mimic_model_st <- mimic_model_st %>%
-    fit_members()
-  
-  # 保存最终模型
-  saveRDS(mimic_model_st, "mimic_model_final.rds")
-  message("mimic_model_final save as mimic_model_final.rds。")
-}
-autoplot(mimic_model_st)
-autoplot(mimic_model_st, type = "weights")
+h2o_stacked_model <- h2o.stackedEnsemble(
+  x = feature_columns,
+  y = "los_long",
+  training_frame = icu_cohort_train,
+  base_models = list(rf_mod_h2o, gb_mod_h2o, logit_mod_h2o)  
+)
 ```
+
 ### Predict
 ```{r}
-mimic_pred <- icu_cohort_test %>%
-  bind_cols(predict(mimic_model_st, ., type = "prob"))
-yardstick::roc_auc(
-  mimic_pred,
-  truth = los_long,
-  contains(".pred_False")
-)
+h2o_stacked_predictions <- h2o.predict(h2o_stacked_model, icu_cohort_test) |>
+  print()
 ```
 ### Model Performance
 ```{r}
-final_log <- extract_workflow(final_log_fit)
-final_log %>% 
-  extract_fit_parsnip() %>% 
-  vip()
-final_tree <- extract_workflow(final_gb_fit)
-final_tree %>% 
-  extract_fit_parsnip() %>% 
-  vip()
-final_rf <- extract_workflow(final_rf_fit)
-final_rf %>% 
-  extract_fit_parsnip() %>% 
-  vip()
+library(pROC)
+h2o.performance(h2o_stacked_model, newdata = icu_cohort_test)
+# stacking model
+perf_stack <- h2o.performance(h2o_stacked_model, newdata = icu_cohort_test)
+auc_stack <- h2o.auc(perf_stack)
+
+# rf model
+perf_rf <- h2o.performance(rf_mod_h2o, newdata = icu_cohort_test)
+auc_rf <- h2o.auc(perf_rf)
+
+# gb model
+perf_gb <- h2o.performance(gb_mod_h2o, newdata = icu_cohort_test)
+auc_gb <- h2o.auc(perf_gb)
+
+# logit model
+perf_logit <- h2o.performance(logit_mod_h2o, newdata = icu_cohort_test)
+auc_logit <- h2o.auc(perf_logit)
+
+# table
+auc_table <- data.frame(
+  Model = c("Stacked Ensemble", "Random Forest", "GBM", "Logistic Regression"),
+  AUC = c(auc_stack, auc_rf, auc_gb, auc_logit)
+) |>
+  print()
 ```
+**conclusion**
+The table above compares the AUC (Area Under the ROC Curve) values for four different classification models—Stacked Ensemble, Random Forest, GBM (Gradient Boosting Machine), and Logistic Regression. The Stacked Ensemble achieves the highest AUC at 0.6370, followed by GBM at 0.6342, Random Forest at 0.6264, and Logistic Regression at 0.6031.The stacked model slightly outperforms the individual algorithms.
+### Predicting compare
+```{r}
+# Logistic Regression
+perf_logit <- h2o.performance(logit_mod_h2o, newdata = icu_cohort_test)
+cm_logit <- h2o.confusionMatrix(perf_logit, thresholds = 0.5)
+cat("\n--- Logistic Regression Confusion Matrix (threshold=0.5) ---\n")
+print(cm_logit)
+
+# Random Forest
+perf_rf <- h2o.performance(rf_mod_h2o, newdata = icu_cohort_test)
+cm_rf <- h2o.confusionMatrix(perf_rf, thresholds = 0.5)
+cat("\n--- Random Forest Confusion Matrix (threshold=0.5) ---\n")
+print(cm_rf)
+
+# GBM
+perf_gb <- h2o.performance(gb_mod_h2o, newdata = icu_cohort_test)
+cm_gb <- h2o.confusionMatrix(perf_gb, thresholds = 0.5)
+cat("\n--- GBM Confusion Matrix (threshold=0.5) ---\n")
+print(cm_gb)
+
+# Stacked Ensemble
+perf_stack <- h2o.performance(h2o_stacked_model, newdata = icu_cohort_test)
+cm_stack <- h2o.confusionMatrix(perf_stack, thresholds = 0.5)
+cat("\n--- Stacked Ensemble Confusion Matrix (threshold=0.5) ---\n")
+print(cm_stack)
+
+```
+**conclusion**
+The Stacked Ensemble achieves the lowest overall error and the highest AUC, indicating that combining multiple base learners yields better predictive performance. Random Forest and GBM both outperform Logistic Regression, reflecting the benefit of more flexible, non-linear modeling. However, each model still shows substantial difficulty correctly identifying positive cases, as evidenced by higher error rates in the TRUE class. Overall, these results suggest that ensemble methods—especially stacking—can provide incremental yet meaningful improvements over individual algorithms.
+### ROC plot
+```{r}
+true_labels <- as.vector(icu_cohort_test$los_long)
+get_roc_df <- function(model, test_frame, true_labels, pos_class = "TRUE") {
+  preds <- h2o.predict(model, test_frame)
+  pred_prob <- as.vector(preds[[pos_class]])
+  # use pROC
+  roc_obj <- roc(true_labels, pred_prob)
+  roc_df <- data.frame(
+    fpr = 1 - rev(roc_obj$specificities),
+    tpr = rev(roc_obj$sensitivities)
+  )
+  return(roc_df)
+}
+
+# get ROC for each model
+roc_logit <- get_roc_df(logit_mod_h2o, icu_cohort_test, true_labels)
+roc_rf    <- get_roc_df(rf_mod_h2o, icu_cohort_test, true_labels)
+roc_gb    <- get_roc_df(gb_mod_h2o, icu_cohort_test, true_labels)
+roc_stack <- get_roc_df(h2o_stacked_model, icu_cohort_test, true_labels)
+
+roc_logit$model <- "Logistic Regression"
+roc_rf$model    <- "Random Forest"
+roc_gb$model    <- "GBM"
+roc_stack$model <- "Stacked Ensemble"
+
+# merge all ROC data
+roc_data <- rbind(roc_logit, roc_rf, roc_gb, roc_stack)
+
+# ggplot
+ggplot(roc_data, aes(x = fpr, y = tpr, color = model)) +
+  geom_line(size = 1) +
+  geom_abline(linetype = "dashed", color = "black") +
+  labs(title = "ROC Curves for Different H2O Models",
+       x = "False Positive Rate (FPR)",
+       y = "True Positive Rate (TPR)") +
+  theme_minimal()
+
+
+```
+**conclusion**
+From the figure it can be seen that stacking model has the best ROC curve performance, which is similar to that of GBM, random forests are slightly inferior to them, and logistic regression has the worst ROC performance.
+
+**What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?**
+From the feature importance analysis, we can see all three models agree that first careunit is one of the most important features in predicting long ICU stays.The last lab measurements before the ICU stay and first vital measurements during ICU stay are also in top important features. This suggests that the last lab measurements before the ICU stay and first vital measurements during ICU stay are important indicators of the patient’s condition and may be useful in predicting long ICU stays.
+In this case, the trade-off between performance and interpretability is clear. While the model stacking approach gives the best ROC AUC, it does so at the cost of interpretability. On the other hand, logistic regression offers ease of interpretation but doesn’t perform as well. The gradient boosting model presents a good balance, with relatively high performance metrics and a degree of interpretability through feature importance scores.
 
 
 
