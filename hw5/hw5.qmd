@@ -141,7 +141,7 @@ icu_cohort_model_split <- icu_cohort_model |>
             "hadm_id",
             "stay_id"))
 data_split <- initial_split(
-  icu_cohort_model,
+  icu_cohort_model_split,
   strata = "los_long",
   prop = 0.5
 )
@@ -204,14 +204,24 @@ param_grid <- grid_regular(
 
 ### Fit cross-validation
 ```{r}
-(logit_fit <- logit_wf |>
-  tune_grid(
-    resamples = folds,
-    grid = param_grid,
-    metrics = metric_set(roc_auc, accuracy),
-    control = control_stack_grid()
-    )) 
-logit_fit
+if (file.exists("logit_fit.rds")) {
+  logit_fit <- readRDS("logit_fit.rds")
+  message("file exists, no need to train again")
+} else {
+  message("can't find logit_fit.rds，train logit_fit model.")
+  
+  logit_fit <- logit_wf |> 
+    tune_grid(
+      resamples = folds,  
+      grid = param_grid,
+      metrics = metric_set(roc_auc, accuracy),
+      control = control_stack_grid()
+    )
+
+  # save model
+  saveRDS(logit_fit, "logit_fit.rds")
+  message("logit_fit training finished and save as logit_fit.rds。")
+}
 ```
 ### Visualize CV results:
 ```{r}
@@ -322,7 +332,7 @@ param_grid <- grid_regular(
   )
 param_grid
 ```
-workflow
+### Workflow
 ```{r}
 rf_wf <- workflow() |>
   add_recipe(rf_recipe) |>
@@ -332,14 +342,29 @@ rf_wf
 ### Fit cross-validation
 ```{r}
 rm(accuracy)
-rf_fit <- rf_wf |>
-  tune_grid(
-    resamples = folds,
-    grid = param_grid,
-    metrics = metric_set(roc_auc, accuracy),
-    control = control_stack_grid()
+
+# Check if rf_fit.rds exists
+if (file.exists("rf_fit.rds")) {
+  # Load the model if the file exists
+  rf_fit <- readRDS("rf_fit.rds")
+  message("✅ Loaded rf_fit.rds. Skipping model training.")
+} else {
+  # Train the model if the file does not exist
+  message("⚠️ rf_fit.rds not found. Starting model training...")
+
+  rf_fit <- rf_wf |> 
+    tune_grid(
+      resamples = folds,  # Ensure the resampling object matches other models
+      grid = param_grid,
+      metrics = metric_set(roc_auc, accuracy),
+      control = control_stack_grid()
     )
-rf_fit
+
+  # Save the trained model
+  saveRDS(rf_fit, "rf_fit.rds")
+  message("✅ rf_fit training completed and saved as rf_fit.rds.")
+}
+
 ```
 ### Visualize CV results
 ```{r}
@@ -431,14 +456,28 @@ gb_wf
 ```
 ### Fit cross-validation.
 ```{r}
-gb_fit <- gb_wf |>
-  tune_grid(
-    resamples = folds,
-    grid = param_grid,
-    metrics = metric_set(roc_auc, accuracy),
-    control = control_stack_grid()
+# Check if gb_fit.rds exists
+if (file.exists("gb_fit.rds")) {
+  # Load the model if the file exists
+  gb_fit <- readRDS("gb_fit.rds")
+  message("✅ Loaded gb_fit.rds. Skipping model training.")
+} else {
+  # Train the model if the file does not exist
+  message("⚠️ gb_fit.rds not found. Starting model training...")
+
+  gb_fit <- gb_wf |> 
+    tune_grid(
+      resamples = folds,  # Ensure the resampling object matches other models
+      grid = param_grid,
+      metrics = metric_set(roc_auc, accuracy),
+      control = control_stack_grid()
     )
-gb_fit
+
+  # Save the trained model
+  saveRDS(gb_fit, "gb_fit.rds")
+  message("✅ gb_fit training completed and saved as gb_fit.rds.")
+}
+
 ```
 ### Visualize CV results
 ```{r}
@@ -475,16 +514,45 @@ final_gb_fit |>
 ```
 ## Model Stacking
 ```{r}
-mimic_model_st <-
-  stacks() %>%
-  add_candidates(logit_fit) %>%
-  add_candidates(rf_fit) %>%
-  add_candidates(gb_fit) %>%
-  blend_predictions(
-    penalty = 10^(-6:2),
-    metrics = c("roc_auc", "accuracy")
-  ) %>%
-  fit_members()
+library(parallel)
+cl <- makeCluster(4) # 限制最大使用 4 核
+registerDoParallel(cl)
+# Step 1: 生成 mimic_model_st 并 blend_predictions()
+if (file.exists("mimic_model_step1.rds")) {
+  # 如果中间文件已存在，则直接加载
+  mimic_model_st <- readRDS("mimic_model_step1.rds")
+  message("mimic_model_step1.rds esists")
+} else {
+  # 如果文件不存在，则重新创建 stacks() 模型
+  message("can't find mimic_model_step1.rds，start stacking model fit")
+  
+  mimic_model_st <- stacks() %>%
+    add_candidates(logit_fit) %>%
+    add_candidates(rf_fit) %>%
+    add_candidates(gb_fit) %>%
+    blend_predictions(penalty = 10^(-6:2), metrics = metric_set(roc_auc, accuracy))
+  
+  # 保存中间模型
+  saveRDS(mimic_model_st, "mimic_model_step1.rds")
+  message("mimic_model_step1 save as mimic_model_step1.rds。")
+}
+
+# Step 2: 进行 fit_members()，生成最终模型
+if (file.exists("mimic_model_final.rds")) {
+  # 如果最终模型已存在，则直接加载
+  mimic_model_st <- readRDS("mimic_model_final.rds")
+  message("mimic_model_final.rds exists")
+} else {
+  # 如果文件不存在，则继续执行 fit_members()
+  message("can't find mimic_model_final.rds")
+  
+  mimic_model_st <- mimic_model_st %>%
+    fit_members()
+  
+  # 保存最终模型
+  saveRDS(mimic_model_st, "mimic_model_final.rds")
+  message("mimic_model_final save as mimic_model_final.rds。")
+}
 autoplot(mimic_model_st)
 autoplot(mimic_model_st, type = "weights")
 ```
