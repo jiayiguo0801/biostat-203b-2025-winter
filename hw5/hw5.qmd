@@ -278,8 +278,8 @@ auc_table <- data.frame(
 ) |>
   print()
 ```
-**conclusion**
 
+**conclusion**
 The table above compares the AUC (Area Under the ROC Curve) values for four different classification models—Stacked Ensemble, Random Forest, GBM (Gradient Boosting Machine), and Logistic Regression. The Stacked Ensemble achieves the highest AUC at 0.6370, followed by GBM at 0.6342, Random Forest at 0.6264, and Logistic Regression at 0.6031.The stacked model slightly outperforms the individual algorithms.
 
 ### Predicting compare
@@ -309,8 +309,8 @@ cat("\n--- Stacked Ensemble Confusion Matrix (threshold=0.5) ---\n")
 print(cm_stack)
 
 ```
-**conclusion**
 
+**conclusion**
 The Stacked Ensemble achieves the lowest overall error and the highest AUC, indicating that combining multiple base learners yields better predictive performance. Random Forest and GBM both outperform Logistic Regression, reflecting the benefit of more flexible, non-linear modeling. However, each model still shows substantial difficulty correctly identifying positive cases, as evidenced by higher error rates in the TRUE class. Overall, these results suggest that ensemble methods—especially stacking—can provide incremental yet meaningful improvements over individual algorithms.
 
 ### ROC plot
@@ -353,12 +353,11 @@ ggplot(roc_data, aes(x = fpr, y = tpr, color = model)) +
 
 
 ```
-**conclusion**
 
+**conclusion**
 From the figure it can be seen that stacking model has the best ROC curve performance, which is similar to that of GBM, random forests are slightly inferior to them, and logistic regression has the worst ROC performance.
 
 **What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?**
-
 From the feature importance analysis, we can see all three models agree that first careunit is one of the most important features in predicting long ICU stays.The last lab measurements before the ICU stay and first vital measurements during ICU stay are also in top important features. This suggests that the last lab measurements before the ICU stay and first vital measurements during ICU stay are important indicators of the patient’s condition and may be useful in predicting long ICU stays.
 In this case, the trade-off between performance and interpretability is clear. While the model stacking approach gives the best ROC AUC, it does so at the cost of interpretability. On the other hand, logistic regression offers ease of interpretation but doesn’t perform as well. The gradient boosting model presents a good balance, with relatively high performance metrics and a degree of interpretability through feature importance scores.
 
