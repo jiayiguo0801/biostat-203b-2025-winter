@@ -26,6 +26,8 @@ library(naniar)
 library(kableExtra)
 library(stacks)
 library(vip)
+library(h2o)
+h2o.init(nthreads = -1, max_mem_size = "8G")
 ```
 
 
@@ -117,6 +119,8 @@ icu_cohort_model <- as.data.frame(icu_cohort_filled) |>
   mutate(los_long = factor(los_long, levels = c(FALSE, TRUE))) |>
   mutate(age_intime = as.numeric(age_intime)) |>
   print()
+icu_cohort_model <- as.h2o(icu_cohort_model)
+h2o.describe(icu_cohort_model)
 ```
 print the summary table
 ```{r}
