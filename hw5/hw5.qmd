@@ -1,9 +1,15 @@
 ---
 title: "hw5"
-format: html
+format: 
+  html:
+    toc: true                
+    toc-depth: 3             
+    toc-location: left       
+    number-sections: true    
 ---
 # Predicting ICU duration
 Using the ICU cohort mimiciv_icu_cohort.rds you built in Homework 4, develop at least three machine learning approaches (logistic regression with enet regularization, random forest, boosting, SVM, MLP, etc) plus a model stacking approach for predicting whether a patient’s ICU stay will be longer than 2 days. You should use the los_long variable as the outcome. You algorithms can use patient demographic information (gender, age at ICU intime, marital status, race), ICU admission information (first care unit), the last lab measurements before the ICU stay, and first vital measurements during ICU stay as features. You are welcome to use any feature engineering techniques you think are appropriate; but make sure to not use features that are not available at an ICU stay’s intime. For instance, last_careunit cannot be used in your algorithms.
+
 ## library
 ```{r}
 sessionInfo()
@@ -45,9 +51,7 @@ icu_cohort %>%
   colnames()
 # keep only variables with less than 10000 missing values
 icu_cohort_discard <- icu_cohort %>%
-  select_if(colSums(is.na(icu_cohort)) <= 10000) %>%
-  print(width = Inf)
-summary(icu_cohort_discard)
+  select_if(colSums(is.na(icu_cohort)) <= 10000) 
 ```
 delete data collected after ICU intime
 ```{r}
@@ -55,11 +59,9 @@ icu_cohort_selected <- icu_cohort_discard |>
   select(-c("stay_id.y", "stay_id.x", "outtime", "dischtime", 
             "hospital_expire_flag", "last_careunit"))
 print(icu_cohort_selected)
-summary(icu_cohort_selected)
 ```
 figure out missing value
 ```{r}
-colMeans(is.na(icu_cohort_selected))
 # make a function to replace outliers to `NA`s
 winsorize <- function(x, lower=0.01, upper=0.99) {
   qnt <- quantile(x, probs = c(lower, upper), na.rm = TRUE)
@@ -73,17 +75,13 @@ icu_cohort_replace <- icu_cohort_selected %>%
                   "Bicarbonate", "Chloride", "Creatinine", 
                   "Glucose", "Potassium", "Sodium",
                   "Hematocrit", "wbc"), winsorize))
-summary(icu_cohort_replace)
-class(icu_cohort_replace)
 # delete all rows with NA in los_long, marital_status
 icu_cohort_replace <- icu_cohort_replace |>
   filter(!is.na(los_long)) |>
   filter(!is.na(marital_status)) |>
   # also delete labevent NA rows
   filter(!if_all(c("Bicarbonate", "Chloride", "Creatinine", "Glucose", 
-                   "Potassium", "Sodium", "Hematocrit", "wbc"), is.na)) |>
-  print()
-
+                   "Potassium", "Sodium", "Hematocrit", "wbc"), is.na)) 
 # delete unnessary columns
 icu_cohort_replace <- icu_cohort_replace |>
   select(-c("admit_provider_id", "discharge_location")) |>
@@ -120,8 +118,7 @@ icu_cohort_model <- as.data.frame(icu_cohort_filled) |>
   mutate(age_intime = as.numeric(age_intime)) |>
   mutate(gender = as.factor(gender)) |>
   mutate(marital_status = as.factor(marital_status)) |>
-  mutate(race = as.factor(race)) |>
-  print()
+  mutate(race = as.factor(race)) 
 ```
 print the summary table
 ```{r}
@@ -204,7 +201,6 @@ rf_mod_h2o <- h2o.randomForest(
   keep_cross_validation_predictions = TRUE
 )
 
-print(rf_mod_h2o)
 ```
 ### Visualize CV results
 ```{r}
@@ -230,7 +226,6 @@ gb_mod_h2o <- h2o.gbm(
   keep_cross_validation_predictions = TRUE
 )
 
-print(gb_mod_h2o)
 ```
 
 
@@ -284,7 +279,9 @@ auc_table <- data.frame(
   print()
 ```
 **conclusion**
+
 The table above compares the AUC (Area Under the ROC Curve) values for four different classification models—Stacked Ensemble, Random Forest, GBM (Gradient Boosting Machine), and Logistic Regression. The Stacked Ensemble achieves the highest AUC at 0.6370, followed by GBM at 0.6342, Random Forest at 0.6264, and Logistic Regression at 0.6031.The stacked model slightly outperforms the individual algorithms.
+
 ### Predicting compare
 ```{r}
 # Logistic Regression
@@ -313,7 +310,9 @@ print(cm_stack)
 
 ```
 **conclusion**
+
 The Stacked Ensemble achieves the lowest overall error and the highest AUC, indicating that combining multiple base learners yields better predictive performance. Random Forest and GBM both outperform Logistic Regression, reflecting the benefit of more flexible, non-linear modeling. However, each model still shows substantial difficulty correctly identifying positive cases, as evidenced by higher error rates in the TRUE class. Overall, these results suggest that ensemble methods—especially stacking—can provide incremental yet meaningful improvements over individual algorithms.
+
 ### ROC plot
 ```{r}
 true_labels <- as.vector(icu_cohort_test$los_long)
@@ -355,9 +354,11 @@ ggplot(roc_data, aes(x = fpr, y = tpr, color = model)) +
 
 ```
 **conclusion**
+
 From the figure it can be seen that stacking model has the best ROC curve performance, which is similar to that of GBM, random forests are slightly inferior to them, and logistic regression has the worst ROC performance.
 
 **What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?**
+
 From the feature importance analysis, we can see all three models agree that first careunit is one of the most important features in predicting long ICU stays.The last lab measurements before the ICU stay and first vital measurements during ICU stay are also in top important features. This suggests that the last lab measurements before the ICU stay and first vital measurements during ICU stay are important indicators of the patient’s condition and may be useful in predicting long ICU stays.
 In this case, the trade-off between performance and interpretability is clear. While the model stacking approach gives the best ROC AUC, it does so at the cost of interpretability. On the other hand, logistic regression offers ease of interpretation but doesn’t perform as well. The gradient boosting model presents a good balance, with relatively high performance metrics and a degree of interpretability through feature importance scores.
 
