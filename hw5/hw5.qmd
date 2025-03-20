@@ -231,7 +231,6 @@ gb_mod_h2o <- h2o.gbm(
 )
 
 print(gb_mod_h2o)
-
 ```
 
 
