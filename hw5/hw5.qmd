@@ -277,7 +277,8 @@ auc_logit <- h2o.auc(perf_logit)
 
 # table
 auc_table <- data.frame(
-  Model = c("Stacked Ensemble", "Random Forest", "GBM", "Logistic Regression"),
+  Model = c("Stacked Ensemble", "Random Forest", 
+            "GBM", "Logistic Regression"),
   AUC = c(auc_stack, auc_rf, auc_gb, auc_logit)
 ) |>
   print()
