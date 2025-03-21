@@ -1,0 +1,2333 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.40">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>hw5</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="hw5_files/libs/clipboard/clipboard.min.js"></script>
+<script src="hw5_files/libs/quarto-html/quarto.js"></script>
+<script src="hw5_files/libs/quarto-html/popper.min.js"></script>
+<script src="hw5_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="hw5_files/libs/quarto-html/anchor.min.js"></script>
+<link href="hw5_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="hw5_files/libs/quarto-html/quarto-syntax-highlighting-549806ee2085284f45b00abea8c6df48.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="hw5_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="hw5_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="hw5_files/libs/bootstrap/bootstrap-973236bd072d72a04ee9cd82dcc9cb29.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article toc-left">
+<div id="quarto-sidebar-toc-left" class="sidebar toc-left">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#predicting-icu-duration" id="toc-predicting-icu-duration" class="nav-link active" data-scroll-target="#predicting-icu-duration"><span class="header-section-number">1</span> Predicting ICU duration</a>
+  <ul class="collapse">
+  <li><a href="#library" id="toc-library" class="nav-link" data-scroll-target="#library"><span class="header-section-number">1.1</span> library</a></li>
+  <li><a href="#data-preprocessing-and-feature-engineering." id="toc-data-preprocessing-and-feature-engineering." class="nav-link" data-scroll-target="#data-preprocessing-and-feature-engineering."><span class="header-section-number">1.2</span> Data preprocessing and feature engineering.</a>
+  <ul class="collapse">
+  <li><a href="#keep-cleaned-data-in-a-file" id="toc-keep-cleaned-data-in-a-file" class="nav-link" data-scroll-target="#keep-cleaned-data-in-a-file"><span class="header-section-number">1.2.1</span> keep cleaned data in a file</a></li>
+  </ul></li>
+  <li><a href="#split-the-dataset" id="toc-split-the-dataset" class="nav-link" data-scroll-target="#split-the-dataset"><span class="header-section-number">1.3</span> split the dataset</a></li>
+  <li><a href="#logistic-regression" id="toc-logistic-regression" class="nav-link" data-scroll-target="#logistic-regression"><span class="header-section-number">1.4</span> Logistic Regression</a>
+  <ul class="collapse">
+  <li><a href="#model" id="toc-model" class="nav-link" data-scroll-target="#model"><span class="header-section-number">1.4.1</span> Model</a></li>
+  <li><a href="#visualize-cv-results" id="toc-visualize-cv-results" class="nav-link" data-scroll-target="#visualize-cv-results"><span class="header-section-number">1.4.2</span> Visualize CV results:</a></li>
+  </ul></li>
+  <li><a href="#random-forest" id="toc-random-forest" class="nav-link" data-scroll-target="#random-forest"><span class="header-section-number">1.5</span> Random forest</a>
+  <ul class="collapse">
+  <li><a href="#model-1" id="toc-model-1" class="nav-link" data-scroll-target="#model-1"><span class="header-section-number">1.5.1</span> Model</a></li>
+  <li><a href="#visualize-cv-results-1" id="toc-visualize-cv-results-1" class="nav-link" data-scroll-target="#visualize-cv-results-1"><span class="header-section-number">1.5.2</span> Visualize CV results</a></li>
+  </ul></li>
+  <li><a href="#xgboost" id="toc-xgboost" class="nav-link" data-scroll-target="#xgboost"><span class="header-section-number">1.6</span> XGBoost</a>
+  <ul class="collapse">
+  <li><a href="#model-2" id="toc-model-2" class="nav-link" data-scroll-target="#model-2"><span class="header-section-number">1.6.1</span> Model</a></li>
+  <li><a href="#visualize-cv-results-2" id="toc-visualize-cv-results-2" class="nav-link" data-scroll-target="#visualize-cv-results-2"><span class="header-section-number">1.6.2</span> Visualize CV results</a></li>
+  </ul></li>
+  <li><a href="#model-stacking" id="toc-model-stacking" class="nav-link" data-scroll-target="#model-stacking"><span class="header-section-number">1.7</span> Model Stacking</a>
+  <ul class="collapse">
+  <li><a href="#predict" id="toc-predict" class="nav-link" data-scroll-target="#predict"><span class="header-section-number">1.7.1</span> Predict</a></li>
+  <li><a href="#model-performance" id="toc-model-performance" class="nav-link" data-scroll-target="#model-performance"><span class="header-section-number">1.7.2</span> Model Performance</a></li>
+  <li><a href="#predicting-compare" id="toc-predicting-compare" class="nav-link" data-scroll-target="#predicting-compare"><span class="header-section-number">1.7.3</span> Predicting compare</a></li>
+  <li><a href="#roc-plot" id="toc-roc-plot" class="nav-link" data-scroll-target="#roc-plot"><span class="header-section-number">1.7.4</span> ROC plot</a></li>
+  </ul></li>
+  </ul></li>
+  </ul>
+</nav>
+</div>
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">hw5</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="predicting-icu-duration" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Predicting ICU duration</h1>
+<p>Using the ICU cohort mimiciv_icu_cohort.rds you built in Homework 4, develop at least three machine learning approaches (logistic regression with enet regularization, random forest, boosting, SVM, MLP, etc) plus a model stacking approach for predicting whether a patient’s ICU stay will be longer than 2 days. You should use the los_long variable as the outcome. You algorithms can use patient demographic information (gender, age at ICU intime, marital status, race), ICU admission information (first care unit), the last lab measurements before the ICU stay, and first vital measurements during ICU stay as features. You are welcome to use any feature engineering techniques you think are appropriate; but make sure to not use features that are not available at an ICU stay’s intime. For instance, last_careunit cannot be used in your algorithms.</p>
+<section id="library" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="library"><span class="header-section-number">1.1</span> library</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>R version 4.3.3 (2024-02-29)
+Platform: x86_64-apple-darwin20 (64-bit)
+Running under: macOS 15.3.1
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Los_Angeles
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+ [1] htmlwidgets_1.6.4 compiler_4.3.3    fastmap_1.2.0     cli_3.6.3        
+ [5] tools_4.3.3       htmltools_0.5.8.1 rstudioapi_0.17.0 yaml_2.3.10      
+ [9] rmarkdown_2.28    knitr_1.49        jsonlite_1.8.9    xfun_0.48        
+[13] digest_0.6.37     rlang_1.1.4       evaluate_1.0.3   </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.1.4     ✔ readr     2.1.5
+✔ forcats   1.0.0     ✔ stringr   1.5.1
+✔ ggplot2   3.5.1     ✔ tibble    3.2.1
+✔ lubridate 1.9.3     ✔ tidyr     1.3.1
+✔ purrr     1.0.2     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(corrplot)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>corrplot 0.95 loaded</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(lubridate)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(miceRanger)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(GGally)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Registered S3 method overwritten by 'GGally':
+  method from   
+  +.gg   ggplot2</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gtsummary)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidymodels)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>── Attaching packages ────────────────────────────────────── tidymodels 1.2.0 ──
+✔ broom        1.0.7     ✔ rsample      1.2.1
+✔ dials        1.4.0     ✔ tune         1.2.1
+✔ infer        1.0.7     ✔ workflows    1.1.4
+✔ modeldata    1.4.0     ✔ workflowsets 1.1.0
+✔ parsnip      1.3.0     ✔ yardstick    1.3.2
+✔ recipes      1.1.1     
+── Conflicts ───────────────────────────────────────── tidymodels_conflicts() ──
+✖ scales::discard() masks purrr::discard()
+✖ dplyr::filter()   masks stats::filter()
+✖ recipes::fixed()  masks stringr::fixed()
+✖ dplyr::lag()      masks stats::lag()
+✖ yardstick::spec() masks readr::spec()
+✖ recipes::step()   masks stats::step()
+• Learn how to get started at https://www.tidymodels.org/start/</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(yardstick)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dials)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(kernlab)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'kernlab'
+
+The following object is masked from 'package:dials':
+
+    buffer
+
+The following object is masked from 'package:scales':
+
+    alpha
+
+The following object is masked from 'package:purrr':
+
+    cross
+
+The following object is masked from 'package:ggplot2':
+
+    alpha</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggthemes)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(naniar)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(kableExtra)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'kableExtra'
+
+The following object is masked from 'package:dplyr':
+
+    group_rows</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stacks)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(vip)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'vip'
+
+The following object is masked from 'package:utils':
+
+    vi</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(h2o)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+----------------------------------------------------------------------
+
+Your next step is to start H2O:
+    &gt; h2o.init()
+
+For H2O package documentation, ask for help:
+    &gt; ??h2o
+
+After starting H2O, you can use the Web UI at http://localhost:54321
+For more information visit https://docs.h2o.ai
+
+----------------------------------------------------------------------
+
+
+Attaching package: 'h2o'
+
+The following objects are masked from 'package:lubridate':
+
+    day, hour, month, week, year
+
+The following objects are masked from 'package:stats':
+
+    cor, sd, var
+
+The following objects are masked from 'package:base':
+
+    &amp;&amp;, %*%, %in%, ||, apply, as.factor, as.numeric, colnames,
+    colnames&lt;-, ifelse, is.character, is.factor, is.numeric, log,
+    log10, log1p, log2, round, signif, trunc</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">h2o.init</span>(<span class="at">nthreads =</span> <span class="sc">-</span><span class="dv">1</span>, <span class="at">max_mem_size =</span> <span class="st">"8G"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> Connection successful!
+
+R is connected to the H2O cluster: 
+    H2O cluster uptime:         6 hours 3 minutes 
+    H2O cluster timezone:       America/Los_Angeles 
+    H2O data parsing timezone:  UTC 
+    H2O cluster version:        3.44.0.3 
+    H2O cluster version age:    1 year, 2 months and 27 days 
+    H2O cluster name:           H2O_started_from_R_guojiayi_rnw010 
+    H2O cluster total nodes:    1 
+    H2O cluster total memory:   6.76 GB 
+    H2O cluster total cores:    8 
+    H2O cluster allowed cores:  8 
+    H2O cluster healthy:        TRUE 
+    H2O Connection ip:          localhost 
+    H2O Connection port:        54321 
+    H2O Connection proxy:       NA 
+    H2O Internal Security:      FALSE 
+    R Version:                  R version 4.3.3 (2024-02-29) </code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in h2o.clusterInfo(): 
+Your H2O cluster version is (1 year, 2 months and 27 days) old. There may be a newer version available.
+Please download and install the latest version from: https://h2o-release.s3.amazonaws.com/h2o/latest_stable.html</code></pre>
+</div>
+</div>
+</section>
+<section id="data-preprocessing-and-feature-engineering." class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="data-preprocessing-and-feature-engineering."><span class="header-section-number">1.2</span> Data preprocessing and feature engineering.</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>icu_cohort <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"../hw4/mimiciv_shiny/mimiciv_icu_cohort.rds"</span>) </span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>icu_cohort <span class="sc">|&gt;</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(<span class="at">width =</span> <span class="cn">Inf</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 94,458 × 44
+   subject_id  hadm_id stay_id.x
+        &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+ 1   10000032 29079034  39553978
+ 2   10000690 25860671  37081114
+ 3   10000980 26913865  39765666
+ 4   10001217 24597018  37067082
+ 5   10001217 27703517  34592300
+ 6   10001725 25563031  31205490
+ 7   10001843 26133978  39698942
+ 8   10001884 26184834  37510196
+ 9   10002013 23581541  39060235
+10   10002114 27793700  34672098
+   first_careunit                                  
+   &lt;fct&gt;                                           
+ 1 Medical Intensive Care Unit (MICU)              
+ 2 Medical Intensive Care Unit (MICU)              
+ 3 Medical Intensive Care Unit (MICU)              
+ 4 Surgical Intensive Care Unit (SICU)             
+ 5 Surgical Intensive Care Unit (SICU)             
+ 6 Medical/Surgical Intensive Care Unit (MICU/SICU)
+ 7 Medical/Surgical Intensive Care Unit (MICU/SICU)
+ 8 Medical Intensive Care Unit (MICU)              
+ 9 Cardiac Vascular Intensive Care Unit (CVICU)    
+10 Coronary Care Unit (CCU)                        
+   last_careunit                                    intime             
+   &lt;fct&gt;                                            &lt;dttm&gt;             
+ 1 Medical Intensive Care Unit (MICU)               2180-07-23 14:00:00
+ 2 Medical Intensive Care Unit (MICU)               2150-11-02 19:37:00
+ 3 Medical Intensive Care Unit (MICU)               2189-06-27 08:42:00
+ 4 Surgical Intensive Care Unit (SICU)              2157-11-20 19:18:02
+ 5 Surgical Intensive Care Unit (SICU)              2157-12-19 15:42:24
+ 6 Medical/Surgical Intensive Care Unit (MICU/SICU) 2110-04-11 15:52:22
+ 7 Medical/Surgical Intensive Care Unit (MICU/SICU) 2134-12-05 18:50:03
+ 8 Medical Intensive Care Unit (MICU)               2131-01-11 04:20:05
+ 9 Cardiac Vascular Intensive Care Unit (CVICU)     2160-05-18 10:00:53
+10 Coronary Care Unit (CCU)                         2162-02-17 23:30:00
+   outtime               los admittime           dischtime          
+   &lt;dttm&gt;              &lt;dbl&gt; &lt;dttm&gt;              &lt;dttm&gt;             
+ 1 2180-07-23 23:50:47 0.410 2180-07-23 12:35:00 2180-07-25 17:55:00
+ 2 2150-11-06 17:03:17 3.89  2150-11-02 18:02:00 2150-11-12 13:45:00
+ 3 2189-06-27 20:38:27 0.498 2189-06-27 07:38:00 2189-07-03 03:00:00
+ 4 2157-11-21 22:08:00 1.12  2157-11-18 22:56:00 2157-11-25 18:00:00
+ 5 2157-12-20 14:27:41 0.948 2157-12-18 16:58:00 2157-12-24 14:55:00
+ 6 2110-04-12 23:59:56 1.34  2110-04-11 15:08:00 2110-04-14 15:00:00
+ 7 2134-12-06 14:38:26 0.825 2134-12-05 00:10:00 2134-12-06 12:54:00
+ 8 2131-01-20 08:27:30 9.17  2131-01-07 20:39:00 2131-01-20 05:15:00
+ 9 2160-05-19 17:33:33 1.31  2160-05-18 07:45:00 2160-05-23 13:30:00
+10 2162-02-20 21:16:27 2.91  2162-02-17 22:32:00 2162-03-04 15:16:00
+   deathtime           admission_type              admit_provider_id
+   &lt;dttm&gt;              &lt;fct&gt;                       &lt;chr&gt;            
+ 1 NA                  EW EMER.                    P06OTX           
+ 2 NA                  EW EMER.                    P26QQ4           
+ 3 NA                  EW EMER.                    P06OTX           
+ 4 NA                  EW EMER.                    P3610N           
+ 5 NA                  Other                       P276OU           
+ 6 NA                  EW EMER.                    P32W56           
+ 7 2134-12-06 12:54:00 URGENT                      P67ATB           
+ 8 2131-01-20 05:15:00 OBSERVATION ADMIT           P49AFC           
+ 9 NA                  SURGICAL SAME DAY ADMISSION P8286C           
+10 NA                  OBSERVATION ADMIT           P46834           
+   admission_location     discharge_location insurance language marital_status
+   &lt;fct&gt;                  &lt;fct&gt;              &lt;chr&gt;     &lt;chr&gt;    &lt;chr&gt;         
+ 1 EMERGENCY ROOM         HOME               Medicaid  English  WIDOWED       
+ 2 EMERGENCY ROOM         Other              Medicare  English  WIDOWED       
+ 3 EMERGENCY ROOM         HOME HEALTH CARE   Medicare  English  MARRIED       
+ 4 EMERGENCY ROOM         HOME HEALTH CARE   Private   Other    MARRIED       
+ 5 PHYSICIAN REFERRAL     HOME HEALTH CARE   Private   Other    MARRIED       
+ 6 Other                  HOME               Private   English  MARRIED       
+ 7 TRANSFER FROM HOSPITAL DIED               Medicare  English  SINGLE        
+ 8 EMERGENCY ROOM         DIED               Medicare  English  MARRIED       
+ 9 PHYSICIAN REFERRAL     HOME HEALTH CARE   Medicare  English  SINGLE        
+10 PHYSICIAN REFERRAL     HOME HEALTH CARE   Medicaid  English  &lt;NA&gt;          
+   edregtime           edouttime           hospital_expire_flag gender
+   &lt;dttm&gt;              &lt;dttm&gt;                             &lt;dbl&gt; &lt;chr&gt; 
+ 1 2180-07-23 05:54:00 2180-07-23 14:00:00                    0 F     
+ 2 2150-11-02 11:41:00 2150-11-02 19:37:00                    0 F     
+ 3 2189-06-27 06:25:00 2189-06-27 08:42:00                    0 F     
+ 4 2157-11-18 17:38:00 2157-11-19 01:24:00                    0 F     
+ 5 NA                  NA                                     0 F     
+ 6 NA                  NA                                     0 F     
+ 7 NA                  NA                                     1 M     
+ 8 2131-01-07 13:36:00 2131-01-07 22:13:00                    1 F     
+ 9 NA                  NA                                     0 F     
+10 2162-02-17 19:35:00 2162-02-17 23:30:00                    0 M     
+   anchor_age anchor_year anchor_year_group dod        stay_id.y Bicarbonate
+        &lt;dbl&gt;       &lt;dbl&gt; &lt;chr&gt;             &lt;date&gt;         &lt;dbl&gt;       &lt;dbl&gt;
+ 1         52        2180 2014 - 2016       2180-09-09  39553978          25
+ 2         86        2150 2008 - 2010       2152-01-30  37081114          26
+ 3         73        2186 2008 - 2010       2193-08-26  39765666          21
+ 4         55        2157 2011 - 2013       NA          34592300          30
+ 5         55        2157 2011 - 2013       NA          34592300          30
+ 6         46        2110 2011 - 2013       NA          31205490          NA
+ 7         73        2131 2017 - 2019       2134-12-06  39698942          28
+ 8         68        2122 2008 - 2010       2131-01-20  37510196          30
+ 9         53        2156 2008 - 2010       NA          39060235          24
+10         56        2162 2020 - 2022       2162-12-11  34672098          18
+   Chloride Creatinine Glucose Potassium Sodium Hematocrit   wbc  stay_id    HR
+      &lt;dbl&gt;      &lt;dbl&gt;   &lt;dbl&gt;     &lt;dbl&gt;  &lt;dbl&gt;      &lt;dbl&gt; &lt;dbl&gt;    &lt;int&gt; &lt;dbl&gt;
+ 1       95        0.7     102       6.7    126       41.1   6.9 39553978    91
+ 2      100        1        85       4.8    137       36.1   7.1 37081114    79
+ 3      109        2.3      89       3.9    144       27.3   5.3 39765666    77
+ 4      104        0.5      87       4.1    142       37.4   5.4 34592300    96
+ 5      104        0.5      87       4.1    142       37.4   5.4 34592300    96
+ 6       98       NA        NA       4.1    139       NA    NA   31205490    86
+ 7       97        1.3     131       3.9    138       31.4  10.4 39698942   118
+ 8       88        1.1     141       4.5    130       39.7  12.2 37510196    38
+ 9      102        0.9     288       3.5    137       34.9   7.2 39060235    80
+10       NA        3.1      95       6.5    125       34.3  16.8 34672098   111
+    NBPs  NBPd    RR    BT age_intime race  los_long
+   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;      &lt;dbl&gt; &lt;chr&gt; &lt;lgl&gt;   
+ 1    84    48    24  98.7         52 WHITE FALSE   
+ 2   107    63    23  97.7         86 WHITE TRUE    
+ 3   150    77    23  98           76 BLACK FALSE   
+ 4   167    95    11  97.6         55 WHITE FALSE   
+ 5   167    95    11  97.6         55 WHITE FALSE   
+ 6    73    56    19  97.7         46 WHITE FALSE   
+ 7   112    71    17  97.9         76 WHITE FALSE   
+ 8   180    12    16  98.1         77 BLACK TRUE    
+ 9   104    70    14  97.2         57 Other FALSE   
+10   112    80    20  97.9         56 Other TRUE    
+# ℹ 94,448 more rows</code></pre>
+</div>
+</div>
+<p>check the missing value</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># check variables with more than 10000 missing values</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>icu_cohort <span class="sc">%&gt;%</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select_if</span>(<span class="fu">colSums</span>(<span class="fu">is.na</span>(icu_cohort)) <span class="sc">&gt;</span> <span class="dv">10000</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">colnames</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "deathtime" "edregtime" "edouttime" "dod"      </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># keep only variables with less than 10000 missing values</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>icu_cohort_discard <span class="ot">&lt;-</span> icu_cohort <span class="sc">%&gt;%</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select_if</span>(<span class="fu">colSums</span>(<span class="fu">is.na</span>(icu_cohort)) <span class="sc">&lt;=</span> <span class="dv">10000</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>delete data collected after ICU intime</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>icu_cohort_selected <span class="ot">&lt;-</span> icu_cohort_discard <span class="sc">|&gt;</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="fu">c</span>(<span class="st">"stay_id.y"</span>, <span class="st">"stay_id.x"</span>, <span class="st">"outtime"</span>, <span class="st">"dischtime"</span>, </span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>            <span class="st">"hospital_expire_flag"</span>, <span class="st">"last_careunit"</span>))</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(icu_cohort_selected)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 94,458 × 34
+   subject_id  hadm_id first_careunit                  intime                los
+        &lt;dbl&gt;    &lt;dbl&gt; &lt;fct&gt;                           &lt;dttm&gt;              &lt;dbl&gt;
+ 1   10000032 29079034 Medical Intensive Care Unit (M… 2180-07-23 14:00:00 0.410
+ 2   10000690 25860671 Medical Intensive Care Unit (M… 2150-11-02 19:37:00 3.89 
+ 3   10000980 26913865 Medical Intensive Care Unit (M… 2189-06-27 08:42:00 0.498
+ 4   10001217 24597018 Surgical Intensive Care Unit (… 2157-11-20 19:18:02 1.12 
+ 5   10001217 27703517 Surgical Intensive Care Unit (… 2157-12-19 15:42:24 0.948
+ 6   10001725 25563031 Medical/Surgical Intensive Car… 2110-04-11 15:52:22 1.34 
+ 7   10001843 26133978 Medical/Surgical Intensive Car… 2134-12-05 18:50:03 0.825
+ 8   10001884 26184834 Medical Intensive Care Unit (M… 2131-01-11 04:20:05 9.17 
+ 9   10002013 23581541 Cardiac Vascular Intensive Car… 2160-05-18 10:00:53 1.31 
+10   10002114 27793700 Coronary Care Unit (CCU)        2162-02-17 23:30:00 2.91 
+# ℹ 94,448 more rows
+# ℹ 29 more variables: admittime &lt;dttm&gt;, admission_type &lt;fct&gt;,
+#   admit_provider_id &lt;chr&gt;, admission_location &lt;fct&gt;,
+#   discharge_location &lt;fct&gt;, insurance &lt;chr&gt;, language &lt;chr&gt;,
+#   marital_status &lt;chr&gt;, gender &lt;chr&gt;, anchor_age &lt;dbl&gt;, anchor_year &lt;dbl&gt;,
+#   anchor_year_group &lt;chr&gt;, Bicarbonate &lt;dbl&gt;, Chloride &lt;dbl&gt;,
+#   Creatinine &lt;dbl&gt;, Glucose &lt;dbl&gt;, Potassium &lt;dbl&gt;, Sodium &lt;dbl&gt;, …</code></pre>
+</div>
+</div>
+<p>figure out missing value</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># make a function to replace outliers to `NA`s</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>winsorize <span class="ot">&lt;-</span> <span class="cf">function</span>(x, <span class="at">lower=</span><span class="fl">0.01</span>, <span class="at">upper=</span><span class="fl">0.99</span>) {</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  qnt <span class="ot">&lt;-</span> <span class="fu">quantile</span>(x, <span class="at">probs =</span> <span class="fu">c</span>(lower, upper), <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>  x[x <span class="sc">&lt;</span> qnt[<span class="dv">1</span>]] <span class="ot">&lt;-</span> qnt[<span class="dv">1</span>]</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>  x[x <span class="sc">&gt;</span> qnt[<span class="dv">2</span>]] <span class="ot">&lt;-</span> qnt[<span class="dv">2</span>]</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>  x</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a><span class="co"># replace the extrem data with NA</span></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>icu_cohort_replace <span class="ot">&lt;-</span> icu_cohort_selected <span class="sc">%&gt;%</span></span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(<span class="st">"HR"</span>, <span class="st">"NBPs"</span>, <span class="st">"NBPd"</span>, <span class="st">"RR"</span>, <span class="st">"BT"</span>, </span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"Bicarbonate"</span>, <span class="st">"Chloride"</span>, <span class="st">"Creatinine"</span>, </span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"Glucose"</span>, <span class="st">"Potassium"</span>, <span class="st">"Sodium"</span>,</span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"Hematocrit"</span>, <span class="st">"wbc"</span>), winsorize))</span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a><span class="co"># delete all rows with NA in los_long, marital_status</span></span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a>icu_cohort_replace <span class="ot">&lt;-</span> icu_cohort_replace <span class="sc">|&gt;</span></span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(los_long)) <span class="sc">|&gt;</span></span>
+<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(marital_status)) <span class="sc">|&gt;</span></span>
+<span id="cb29-18"><a href="#cb29-18" aria-hidden="true" tabindex="-1"></a>  <span class="co"># also delete labevent NA rows</span></span>
+<span id="cb29-19"><a href="#cb29-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">if_all</span>(<span class="fu">c</span>(<span class="st">"Bicarbonate"</span>, <span class="st">"Chloride"</span>, <span class="st">"Creatinine"</span>, <span class="st">"Glucose"</span>, </span>
+<span id="cb29-20"><a href="#cb29-20" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"Potassium"</span>, <span class="st">"Sodium"</span>, <span class="st">"Hematocrit"</span>, <span class="st">"wbc"</span>), is.na)) </span>
+<span id="cb29-21"><a href="#cb29-21" aria-hidden="true" tabindex="-1"></a><span class="co"># delete unnessary columns</span></span>
+<span id="cb29-22"><a href="#cb29-22" aria-hidden="true" tabindex="-1"></a>icu_cohort_replace <span class="ot">&lt;-</span> icu_cohort_replace <span class="sc">|&gt;</span></span>
+<span id="cb29-23"><a href="#cb29-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="fu">c</span>(<span class="st">"admit_provider_id"</span>, <span class="st">"discharge_location"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb29-24"><a href="#cb29-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 83,043 × 32
+   subject_id  hadm_id first_careunit                  intime                los
+        &lt;dbl&gt;    &lt;dbl&gt; &lt;fct&gt;                           &lt;dttm&gt;              &lt;dbl&gt;
+ 1   10000032 29079034 Medical Intensive Care Unit (M… 2180-07-23 14:00:00 0.410
+ 2   10000690 25860671 Medical Intensive Care Unit (M… 2150-11-02 19:37:00 3.89 
+ 3   10000980 26913865 Medical Intensive Care Unit (M… 2189-06-27 08:42:00 0.498
+ 4   10001217 24597018 Surgical Intensive Care Unit (… 2157-11-20 19:18:02 1.12 
+ 5   10001217 27703517 Surgical Intensive Care Unit (… 2157-12-19 15:42:24 0.948
+ 6   10001725 25563031 Medical/Surgical Intensive Car… 2110-04-11 15:52:22 1.34 
+ 7   10001843 26133978 Medical/Surgical Intensive Car… 2134-12-05 18:50:03 0.825
+ 8   10001884 26184834 Medical Intensive Care Unit (M… 2131-01-11 04:20:05 9.17 
+ 9   10002013 23581541 Cardiac Vascular Intensive Car… 2160-05-18 10:00:53 1.31 
+10   10002155 20345487 Medical Intensive Care Unit (M… 2131-03-09 21:33:00 0.859
+# ℹ 83,033 more rows
+# ℹ 27 more variables: admittime &lt;dttm&gt;, admission_type &lt;fct&gt;,
+#   admission_location &lt;fct&gt;, insurance &lt;chr&gt;, language &lt;chr&gt;,
+#   marital_status &lt;chr&gt;, gender &lt;chr&gt;, anchor_age &lt;dbl&gt;, anchor_year &lt;dbl&gt;,
+#   anchor_year_group &lt;chr&gt;, Bicarbonate &lt;dbl&gt;, Chloride &lt;dbl&gt;,
+#   Creatinine &lt;dbl&gt;, Glucose &lt;dbl&gt;, Potassium &lt;dbl&gt;, Sodium &lt;dbl&gt;,
+#   Hematocrit &lt;dbl&gt;, wbc &lt;dbl&gt;, stay_id &lt;int&gt;, HR &lt;dbl&gt;, NBPs &lt;dbl&gt;, …</code></pre>
+</div>
+</div>
+<section id="keep-cleaned-data-in-a-file" class="level3" data-number="1.2.1">
+<h3 data-number="1.2.1" class="anchored" data-anchor-id="keep-cleaned-data-in-a-file"><span class="header-section-number">1.2.1</span> keep cleaned data in a file</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># fill in the NA value</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">file.exists</span>(<span class="st">"icu_cohort_filled.rds"</span>)){</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  icu_cohort_filled <span class="ot">&lt;-</span> <span class="fu">read_rds</span>(<span class="st">"icu_cohort_filled.rds"</span>)</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>}<span class="cf">else</span>{</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  imputed_data <span class="ot">&lt;-</span> <span class="fu">miceRanger</span>(icu_cohort_replace, </span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>                           <span class="at">m =</span> <span class="dv">1</span>,        </span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>                           <span class="at">max.depth =</span> <span class="dv">8</span>,</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>                           <span class="at">num.trees =</span> <span class="dv">50</span>)  </span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>  icu_cohort_filled <span class="ot">&lt;-</span> <span class="fu">completeData</span>(imputed_data)</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>  icu_cohort_filled <span class="sc">|&gt;</span></span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">write_rds</span>(<span class="st">"icu_cohort_filled.rds"</span>)</span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>icu_cohort_model <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(icu_cohort_filled) <span class="sc">|&gt;</span></span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename_with</span>(<span class="sc">~</span> <span class="fu">gsub</span>(<span class="st">"^Dataset_1</span><span class="sc">\\</span><span class="st">."</span>, <span class="st">""</span>, .x)) <span class="sc">|&gt;</span></span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Keep necessary columns</span></span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(</span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a>    <span class="st">"los_long"</span>,  </span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a>    <span class="st">"gender"</span>, <span class="st">"marital_status"</span>, <span class="st">"race"</span>, <span class="st">"first_careunit"</span>,</span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Bicarbonate"</span>, <span class="st">"Chloride"</span>, <span class="st">"Creatinine"</span>, <span class="st">"Glucose"</span>, </span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Potassium"</span>, <span class="st">"Sodium"</span>, <span class="st">"Hematocrit"</span>, <span class="st">"wbc"</span>,</span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a>    <span class="st">"HR"</span>, <span class="st">"NBPs"</span>, <span class="st">"NBPd"</span>, <span class="st">"RR"</span>, <span class="st">"BT"</span>,</span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a>    <span class="st">"age_intime"</span>, <span class="st">"subject_id"</span>, <span class="st">"stay_id"</span>, <span class="st">"hadm_id"</span></span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb31-24"><a href="#cb31-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">los_long =</span> <span class="fu">factor</span>(los_long, <span class="at">levels =</span> <span class="fu">c</span>(<span class="cn">FALSE</span>, <span class="cn">TRUE</span>))) <span class="sc">|&gt;</span></span>
+<span id="cb31-25"><a href="#cb31-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">age_intime =</span> <span class="fu">as.numeric</span>(age_intime)) <span class="sc">|&gt;</span></span>
+<span id="cb31-26"><a href="#cb31-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">gender =</span> <span class="fu">as.factor</span>(gender)) <span class="sc">|&gt;</span></span>
+<span id="cb31-27"><a href="#cb31-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">marital_status =</span> <span class="fu">as.factor</span>(marital_status)) <span class="sc">|&gt;</span></span>
+<span id="cb31-28"><a href="#cb31-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">race =</span> <span class="fu">as.factor</span>(race)) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>print the summary table</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>summary_table <span class="ot">&lt;-</span> icu_cohort_model <span class="sc">%&gt;%</span> </span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="st">"los_long"</span>,  </span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"gender"</span>, <span class="st">"marital_status"</span>, <span class="st">"race"</span>, <span class="st">"first_careunit"</span>,</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Bicarbonate"</span>, <span class="st">"Chloride"</span>, <span class="st">"Creatinine"</span>, <span class="st">"Glucose"</span>, </span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Potassium"</span>, <span class="st">"Sodium"</span>, <span class="st">"Hematocrit"</span>, <span class="st">"wbc"</span>,</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"HR"</span>, <span class="st">"NBPs"</span>, <span class="st">"NBPd"</span>, <span class="st">"RR"</span>, <span class="st">"BT"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tbl_summary</span>(<span class="at">by =</span> los_long)</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>summary_table</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="zdvrxssuru" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#zdvrxssuru table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#zdvrxssuru thead, #zdvrxssuru tbody, #zdvrxssuru tfoot, #zdvrxssuru tr, #zdvrxssuru td, #zdvrxssuru th {
+  border-style: none;
+}
+
+#zdvrxssuru p {
+  margin: 0;
+  padding: 0;
+}
+
+#zdvrxssuru .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#zdvrxssuru .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#zdvrxssuru .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#zdvrxssuru .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#zdvrxssuru .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#zdvrxssuru .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#zdvrxssuru .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#zdvrxssuru .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#zdvrxssuru .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#zdvrxssuru .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#zdvrxssuru .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#zdvrxssuru .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#zdvrxssuru .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#zdvrxssuru .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#zdvrxssuru .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#zdvrxssuru .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#zdvrxssuru .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#zdvrxssuru .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#zdvrxssuru .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#zdvrxssuru .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#zdvrxssuru .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#zdvrxssuru .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#zdvrxssuru .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#zdvrxssuru .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#zdvrxssuru .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#zdvrxssuru .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#zdvrxssuru .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#zdvrxssuru .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#zdvrxssuru .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#zdvrxssuru .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#zdvrxssuru .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#zdvrxssuru .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#zdvrxssuru .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#zdvrxssuru .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#zdvrxssuru .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#zdvrxssuru .gt_left {
+  text-align: left;
+}
+
+#zdvrxssuru .gt_center {
+  text-align: center;
+}
+
+#zdvrxssuru .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#zdvrxssuru .gt_font_normal {
+  font-weight: normal;
+}
+
+#zdvrxssuru .gt_font_bold {
+  font-weight: bold;
+}
+
+#zdvrxssuru .gt_font_italic {
+  font-style: italic;
+}
+
+#zdvrxssuru .gt_super {
+  font-size: 65%;
+}
+
+#zdvrxssuru .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#zdvrxssuru .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#zdvrxssuru .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#zdvrxssuru .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#zdvrxssuru .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#zdvrxssuru .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#zdvrxssuru .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#zdvrxssuru .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#zdvrxssuru div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="gt_col_headings header">
+<th id="label" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col"><strong>Characteristic</strong></th>
+<th id="stat_1" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>FALSE</strong><br> N = 43,044<span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;line-height:0;"><sup>1</sup></span></th>
+<th id="stat_2" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>TRUE</strong><br> N = 39,999<span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;line-height:0;"><sup>1</sup></span></th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">gender</td>
+<td class="gt_row gt_center" headers="stat_1"><br>
+</td>
+<td class="gt_row gt_center" headers="stat_2"><br>
+</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;F</td>
+<td class="gt_row gt_center" headers="stat_1">19,403 (45%)</td>
+<td class="gt_row gt_center" headers="stat_2">17,488 (44%)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;M</td>
+<td class="gt_row gt_center" headers="stat_1">23,641 (55%)</td>
+<td class="gt_row gt_center" headers="stat_2">22,511 (56%)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">marital_status</td>
+<td class="gt_row gt_center" headers="stat_1"><br>
+</td>
+<td class="gt_row gt_center" headers="stat_2"><br>
+</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;DIVORCED</td>
+<td class="gt_row gt_center" headers="stat_1">3,413 (7.9%)</td>
+<td class="gt_row gt_center" headers="stat_2">3,228 (8.1%)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;MARRIED</td>
+<td class="gt_row gt_center" headers="stat_1">20,465 (48%)</td>
+<td class="gt_row gt_center" headers="stat_2">19,495 (49%)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;SINGLE</td>
+<td class="gt_row gt_center" headers="stat_1">13,621 (32%)</td>
+<td class="gt_row gt_center" headers="stat_2">12,177 (30%)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;WIDOWED</td>
+<td class="gt_row gt_center" headers="stat_1">5,545 (13%)</td>
+<td class="gt_row gt_center" headers="stat_2">5,099 (13%)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">race</td>
+<td class="gt_row gt_center" headers="stat_1"><br>
+</td>
+<td class="gt_row gt_center" headers="stat_2"><br>
+</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;ASIAN</td>
+<td class="gt_row gt_center" headers="stat_1">1,470 (3.4%)</td>
+<td class="gt_row gt_center" headers="stat_2">1,318 (3.3%)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;BLACK</td>
+<td class="gt_row gt_center" headers="stat_1">5,314 (12%)</td>
+<td class="gt_row gt_center" headers="stat_2">4,747 (12%)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;HISPANIC</td>
+<td class="gt_row gt_center" headers="stat_1">1,857 (4.3%)</td>
+<td class="gt_row gt_center" headers="stat_2">1,600 (4.0%)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Other</td>
+<td class="gt_row gt_center" headers="stat_1">3,696 (8.6%)</td>
+<td class="gt_row gt_center" headers="stat_2">3,858 (9.6%)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;WHITE</td>
+<td class="gt_row gt_center" headers="stat_1">30,707 (71%)</td>
+<td class="gt_row gt_center" headers="stat_2">28,476 (71%)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">first_careunit</td>
+<td class="gt_row gt_center" headers="stat_1"><br>
+</td>
+<td class="gt_row gt_center" headers="stat_2"><br>
+</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Cardiac Vascular Intensive Care Unit (CVICU)</td>
+<td class="gt_row gt_center" headers="stat_1">6,747 (16%)</td>
+<td class="gt_row gt_center" headers="stat_2">6,539 (16%)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Coronary Care Unit (CCU)</td>
+<td class="gt_row gt_center" headers="stat_1">4,535 (11%)</td>
+<td class="gt_row gt_center" headers="stat_2">4,589 (11%)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Medical Intensive Care Unit (MICU)</td>
+<td class="gt_row gt_center" headers="stat_1">9,909 (23%)</td>
+<td class="gt_row gt_center" headers="stat_2">8,483 (21%)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Medical/Surgical Intensive Care Unit (MICU/SICU)</td>
+<td class="gt_row gt_center" headers="stat_1">8,089 (19%)</td>
+<td class="gt_row gt_center" headers="stat_2">6,002 (15%)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Neuro Intermediate</td>
+<td class="gt_row gt_center" headers="stat_1">1,895 (4.4%)</td>
+<td class="gt_row gt_center" headers="stat_2">3,137 (7.8%)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Surgical Intensive Care Unit (SICU)</td>
+<td class="gt_row gt_center" headers="stat_1">5,913 (14%)</td>
+<td class="gt_row gt_center" headers="stat_2">5,674 (14%)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Trauma SICU (TSICU)</td>
+<td class="gt_row gt_center" headers="stat_1">4,670 (11%)</td>
+<td class="gt_row gt_center" headers="stat_2">4,058 (10%)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Other</td>
+<td class="gt_row gt_center" headers="stat_1">1,286 (3.0%)</td>
+<td class="gt_row gt_center" headers="stat_2">1,517 (3.8%)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">Bicarbonate</td>
+<td class="gt_row gt_center" headers="stat_1">24.0 (21.0, 27.0)</td>
+<td class="gt_row gt_center" headers="stat_2">24.0 (21.0, 27.0)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">Chloride</td>
+<td class="gt_row gt_center" headers="stat_1">102 (98, 105)</td>
+<td class="gt_row gt_center" headers="stat_2">102 (98, 105)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">Creatinine</td>
+<td class="gt_row gt_center" headers="stat_1">1.00 (0.80, 1.40)</td>
+<td class="gt_row gt_center" headers="stat_2">1.00 (0.80, 1.60)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">Glucose</td>
+<td class="gt_row gt_center" headers="stat_1">118 (98, 154)</td>
+<td class="gt_row gt_center" headers="stat_2">121 (100, 158)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">Potassium</td>
+<td class="gt_row gt_center" headers="stat_1">4.20 (3.90, 4.60)</td>
+<td class="gt_row gt_center" headers="stat_2">4.20 (3.90, 4.70)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">Sodium</td>
+<td class="gt_row gt_center" headers="stat_1">139.0 (136.0, 141.0)</td>
+<td class="gt_row gt_center" headers="stat_2">138.0 (135.0, 141.0)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">Hematocrit</td>
+<td class="gt_row gt_center" headers="stat_1">36 (30, 40)</td>
+<td class="gt_row gt_center" headers="stat_2">34 (29, 40)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">wbc</td>
+<td class="gt_row gt_center" headers="stat_1">9.0 (6.6, 12.6)</td>
+<td class="gt_row gt_center" headers="stat_2">9.4 (6.8, 13.4)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">HR</td>
+<td class="gt_row gt_center" headers="stat_1">85 (74, 99)</td>
+<td class="gt_row gt_center" headers="stat_2">87 (75, 102)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">NBPs</td>
+<td class="gt_row gt_center" headers="stat_1">122 (106, 139)</td>
+<td class="gt_row gt_center" headers="stat_2">120 (104, 138)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">NBPd</td>
+<td class="gt_row gt_center" headers="stat_1">68 (58, 80)</td>
+<td class="gt_row gt_center" headers="stat_2">67 (56, 79)</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="label">RR</td>
+<td class="gt_row gt_center" headers="stat_1">18 (15, 22)</td>
+<td class="gt_row gt_center" headers="stat_2">19 (15, 23)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="label">BT</td>
+<td class="gt_row gt_center" headers="stat_1">98.10 (97.60, 98.60)</td>
+<td class="gt_row gt_center" headers="stat_2">98.20 (97.60, 98.70)</td>
+</tr>
+</tbody><tfoot class="gt_footnotes">
+<tr class="odd">
+<td colspan="3" class="gt_footnote"><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;line-height:0;"><sup>1</sup></span> n (%); Median (Q1, Q3)</td>
+</tr>
+</tfoot>
+
+</table>
+
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="split-the-dataset" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="split-the-dataset"><span class="header-section-number">1.3</span> split the dataset</h2>
+<p>Partition data into 50% training set and 50% test set. Stratify partitioning according to los_long. For grading purpose, sort the data by subject_id, hadm_id, and stay_id and use the seed 203 for the initial data split. Below is the sample code.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">203</span>)</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="co"># arrange the data</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>icu_cohort_model_split <span class="ot">&lt;-</span> icu_cohort_model <span class="sc">|&gt;</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(subject_id, hadm_id, stay_id) <span class="sc">|&gt;</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="fu">c</span>(<span class="st">"subject_id"</span>,</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>            <span class="st">"hadm_id"</span>,</span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>            <span class="st">"stay_id"</span>))</span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a>data_split <span class="ot">&lt;-</span> <span class="fu">initial_split</span>(</span>
+<span id="cb33-9"><a href="#cb33-9" aria-hidden="true" tabindex="-1"></a>  icu_cohort_model_split,</span>
+<span id="cb33-10"><a href="#cb33-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">strata =</span> <span class="st">"los_long"</span>,</span>
+<span id="cb33-11"><a href="#cb33-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">prop =</span> <span class="fl">0.5</span></span>
+<span id="cb33-12"><a href="#cb33-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb33-13"><a href="#cb33-13" aria-hidden="true" tabindex="-1"></a>data_split</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&lt;Training/Testing/Total&gt;
+&lt;41521/41522/83043&gt;</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>icu_cohort_train <span class="ot">&lt;-</span> <span class="fu">training</span>(data_split)</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(icu_cohort_train)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 41521    19</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>icu_cohort_test <span class="ot">&lt;-</span> <span class="fu">testing</span>(data_split)</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(icu_cohort_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 41522    19</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>icu_cohort_train <span class="ot">&lt;-</span> <span class="fu">as.h2o</span>(icu_cohort_train)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |======================================================================| 100%</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>icu_cohort_test <span class="ot">&lt;-</span> <span class="fu">as.h2o</span>(icu_cohort_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |======================================================================| 100%</code></pre>
+</div>
+</div>
+</section>
+<section id="logistic-regression" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="logistic-regression"><span class="header-section-number">1.4</span> Logistic Regression</h2>
+<section id="model" class="level3" data-number="1.4.1">
+<h3 data-number="1.4.1" class="anchored" data-anchor-id="model"><span class="header-section-number">1.4.1</span> Model</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>logit_mod_h2o <span class="ot">&lt;-</span> <span class="fu">h2o.glm</span>(</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> <span class="fu">c</span>(<span class="st">"gender"</span>, <span class="st">"marital_status"</span>, <span class="st">"race"</span>, <span class="st">"first_careunit"</span>,</span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Bicarbonate"</span>, <span class="st">"Chloride"</span>, <span class="st">"Creatinine"</span>, <span class="st">"Glucose"</span>, </span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Potassium"</span>, <span class="st">"Sodium"</span>, <span class="st">"Hematocrit"</span>, <span class="st">"wbc"</span>,</span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"HR"</span>, <span class="st">"NBPs"</span>, <span class="st">"NBPd"</span>, <span class="st">"RR"</span>, <span class="st">"BT"</span>, <span class="st">"age_intime"</span>),</span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">y =</span> <span class="st">"los_long"</span>,</span>
+<span id="cb43-7"><a href="#cb43-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">training_frame =</span> icu_cohort_train,</span>
+<span id="cb43-8"><a href="#cb43-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> <span class="st">"binomial"</span>,</span>
+<span id="cb43-9"><a href="#cb43-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">alpha =</span> <span class="fl">0.5</span>,</span>
+<span id="cb43-10"><a href="#cb43-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">lambda_search =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb43-11"><a href="#cb43-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">nfolds =</span> <span class="dv">5</span>,             </span>
+<span id="cb43-12"><a href="#cb43-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">keep_cross_validation_predictions =</span> <span class="cn">TRUE</span></span>
+<span id="cb43-13"><a href="#cb43-13" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |==============                                                        |  20%
+  |                                                                            
+  |==========================                                            |  38%
+  |                                                                            
+  |======================================================================| 100%</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in doTryCatch(return(expr), name, parentenv, handler): Reached maximum
+number of iterations 47!</code></pre>
+</div>
+</div>
+</section>
+<section id="visualize-cv-results" class="level3" data-number="1.4.2">
+<h3 data-number="1.4.2" class="anchored" data-anchor-id="visualize-cv-results"><span class="header-section-number">1.4.2</span> Visualize CV results:</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">h2o.varimp_plot</span>(logit_mod_h2o)  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="hw5_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">h2o.performance</span>(logit_mod_h2o)  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>H2OBinomialMetrics: glm
+** Reported on training data. **
+
+MSE:  0.2422779
+RMSE:  0.4922174
+LogLoss:  0.6774787
+Mean Per-Class Error:  0.4933365
+AUC:  0.5977081
+AUCPR:  0.5695207
+Gini:  0.1954162
+R^2:  0.02958268
+Residual Deviance:  56259.18
+AIC:  56311.18
+
+Confusion Matrix (vertical: actual; across: predicted) for F1-optimal threshold:
+       FALSE  TRUE    Error          Rate
+FALSE    473 21049 0.978022  =21049/21522
+TRUE     173 19826 0.008650    =173/19999
+Totals   646 40875 0.511115  =21222/41521
+
+Maximum Metrics: Maximum metrics at their respective thresholds
+                        metric threshold        value idx
+1                       max f1  0.320247     0.651378 370
+2                       max f2  0.243312     0.822930 397
+3                 max f0point5  0.450966     0.560915 241
+4                 max accuracy  0.484125     0.571614 198
+5                max precision  0.827308     1.000000   0
+6                   max recall  0.243312     1.000000 397
+7              max specificity  0.827308     1.000000   0
+8             max absolute_mcc  0.473170     0.143657 212
+9   max min_per_class_accuracy  0.476334     0.570579 208
+10 max mean_per_class_accuracy  0.473170     0.571850 212
+11                     max tns  0.827308 21522.000000   0
+12                     max fns  0.827308 19998.000000   0
+13                     max fps  0.225898 21522.000000 399
+14                     max tps  0.243312 19999.000000 397
+15                     max tnr  0.827308     1.000000   0
+16                     max fnr  0.827308     0.999950   0
+17                     max fpr  0.225898     1.000000 399
+18                     max tpr  0.243312     1.000000 397
+
+Gains/Lift Table: Extract with `h2o.gainsLift(&lt;model&gt;, &lt;data&gt;)` or `h2o.gainsLift(&lt;model&gt;, valid=&lt;T/F&gt;, xval=&lt;T/F&gt;)`</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="random-forest" class="level2" data-number="1.5">
+<h2 data-number="1.5" class="anchored" data-anchor-id="random-forest"><span class="header-section-number">1.5</span> Random forest</h2>
+<section id="model-1" class="level3" data-number="1.5.1">
+<h3 data-number="1.5.1" class="anchored" data-anchor-id="model-1"><span class="header-section-number">1.5.1</span> Model</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>rf_mod_h2o <span class="ot">&lt;-</span> <span class="fu">h2o.randomForest</span>(</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> <span class="fu">c</span>(<span class="st">"gender"</span>, <span class="st">"marital_status"</span>, <span class="st">"race"</span>, <span class="st">"first_careunit"</span>,</span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Bicarbonate"</span>, <span class="st">"Chloride"</span>, <span class="st">"Creatinine"</span>, <span class="st">"Glucose"</span>, </span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Potassium"</span>, <span class="st">"Sodium"</span>, <span class="st">"Hematocrit"</span>, <span class="st">"wbc"</span>,</span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"HR"</span>, <span class="st">"NBPs"</span>, <span class="st">"NBPd"</span>, <span class="st">"RR"</span>, <span class="st">"BT"</span>, <span class="st">"age_intime"</span>),  </span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">y =</span> <span class="st">"los_long"</span>,         </span>
+<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">training_frame =</span> icu_cohort_train,  </span>
+<span id="cb49-8"><a href="#cb49-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">ntrees =</span> <span class="dv">100</span>,           </span>
+<span id="cb49-9"><a href="#cb49-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">mtries =</span> <span class="sc">-</span><span class="dv">1</span>,           </span>
+<span id="cb49-10"><a href="#cb49-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">max_depth =</span> <span class="dv">20</span>,         </span>
+<span id="cb49-11"><a href="#cb49-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">min_rows =</span> <span class="dv">5</span>,          </span>
+<span id="cb49-12"><a href="#cb49-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">1234</span>,           </span>
+<span id="cb49-13"><a href="#cb49-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">nfolds =</span> <span class="dv">5</span>,</span>
+<span id="cb49-14"><a href="#cb49-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">balance_classes =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb49-15"><a href="#cb49-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">keep_cross_validation_predictions =</span> <span class="cn">TRUE</span></span>
+<span id="cb49-16"><a href="#cb49-16" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |=                                                                     |   1%
+  |                                                                            
+  |==                                                                    |   3%
+  |                                                                            
+  |====                                                                  |   6%
+  |                                                                            
+  |========                                                              |  11%
+  |                                                                            
+  |==========                                                            |  15%
+  |                                                                            
+  |============                                                          |  18%
+  |                                                                            
+  |==============                                                        |  20%
+  |                                                                            
+  |================                                                      |  23%
+  |                                                                            
+  |===================                                                   |  28%
+  |                                                                            
+  |======================                                                |  32%
+  |                                                                            
+  |========================                                              |  35%
+  |                                                                            
+  |==========================                                            |  37%
+  |                                                                            
+  |============================                                          |  40%
+  |                                                                            
+  |================================                                      |  45%
+  |                                                                            
+  |===================================                                   |  50%
+  |                                                                            
+  |====================================                                  |  52%
+  |                                                                            
+  |======================================                                |  54%
+  |                                                                            
+  |========================================                              |  57%
+  |                                                                            
+  |===========================================                           |  62%
+  |                                                                            
+  |=============================================                         |  65%
+  |                                                                            
+  |===============================================                       |  67%
+  |                                                                            
+  |=================================================                     |  70%
+  |                                                                            
+  |==================================================                    |  72%
+  |                                                                            
+  |======================================================                |  76%
+  |                                                                            
+  |========================================================              |  80%
+  |                                                                            
+  |==========================================================            |  83%
+  |                                                                            
+  |============================================================          |  85%
+  |                                                                            
+  |==============================================================        |  88%
+  |                                                                            
+  |================================================================      |  92%
+  |                                                                            
+  |===================================================================   |  96%
+  |                                                                            
+  |======================================================================| 100%</code></pre>
+</div>
+</div>
+</section>
+<section id="visualize-cv-results-1" class="level3" data-number="1.5.2">
+<h3 data-number="1.5.2" class="anchored" data-anchor-id="visualize-cv-results-1"><span class="header-section-number">1.5.2</span> Visualize CV results</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="fu">h2o.varimp_plot</span>(rf_mod_h2o)  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="hw5_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="xgboost" class="level2" data-number="1.6">
+<h2 data-number="1.6" class="anchored" data-anchor-id="xgboost"><span class="header-section-number">1.6</span> XGBoost</h2>
+<section id="model-2" class="level3" data-number="1.6.1">
+<h3 data-number="1.6.1" class="anchored" data-anchor-id="model-2"><span class="header-section-number">1.6.1</span> Model</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>gb_mod_h2o <span class="ot">&lt;-</span> <span class="fu">h2o.gbm</span>(</span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> <span class="fu">c</span>(<span class="st">"gender"</span>, <span class="st">"marital_status"</span>, <span class="st">"race"</span>, <span class="st">"first_careunit"</span>,</span>
+<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Bicarbonate"</span>, <span class="st">"Chloride"</span>, <span class="st">"Creatinine"</span>, <span class="st">"Glucose"</span>, </span>
+<span id="cb52-4"><a href="#cb52-4" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Potassium"</span>, <span class="st">"Sodium"</span>, <span class="st">"Hematocrit"</span>, <span class="st">"wbc"</span>,</span>
+<span id="cb52-5"><a href="#cb52-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"HR"</span>, <span class="st">"NBPs"</span>, <span class="st">"NBPd"</span>, <span class="st">"RR"</span>, <span class="st">"BT"</span>, <span class="st">"age_intime"</span>),  </span>
+<span id="cb52-6"><a href="#cb52-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">y =</span> <span class="st">"los_long"</span>,         </span>
+<span id="cb52-7"><a href="#cb52-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">training_frame =</span> icu_cohort_train,  </span>
+<span id="cb52-8"><a href="#cb52-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">ntrees =</span> <span class="dv">200</span>,           </span>
+<span id="cb52-9"><a href="#cb52-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">max_depth =</span> <span class="dv">6</span>,          </span>
+<span id="cb52-10"><a href="#cb52-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">learn_rate =</span> <span class="fl">0.05</span>,      </span>
+<span id="cb52-11"><a href="#cb52-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">sample_rate =</span> <span class="fl">0.8</span>,      </span>
+<span id="cb52-12"><a href="#cb52-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">col_sample_rate =</span> <span class="fl">0.8</span>,  </span>
+<span id="cb52-13"><a href="#cb52-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">1234</span>,            </span>
+<span id="cb52-14"><a href="#cb52-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">nfolds =</span> <span class="dv">5</span>,</span>
+<span id="cb52-15"><a href="#cb52-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">keep_cross_validation_predictions =</span> <span class="cn">TRUE</span></span>
+<span id="cb52-16"><a href="#cb52-16" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |=                                                                     |   2%
+  |                                                                            
+  |====                                                                  |   5%
+  |                                                                            
+  |=========                                                             |  13%
+  |                                                                            
+  |=================                                                     |  24%
+  |                                                                            
+  |=======================                                               |  33%
+  |                                                                            
+  |==========================                                            |  37%
+  |                                                                            
+  |=============================                                         |  41%
+  |                                                                            
+  |====================================                                  |  52%
+  |                                                                            
+  |============================================                          |  63%
+  |                                                                            
+  |===============================================                       |  68%
+  |                                                                            
+  |=================================================                     |  70%
+  |                                                                            
+  |====================================================                  |  75%
+  |                                                                            
+  |==========================================================            |  83%
+  |                                                                            
+  |=============================================================         |  87%
+  |                                                                            
+  |================================================================      |  91%
+  |                                                                            
+  |===================================================================== |  99%
+  |                                                                            
+  |======================================================================| 100%</code></pre>
+</div>
+</div>
+</section>
+<section id="visualize-cv-results-2" class="level3" data-number="1.6.2">
+<h3 data-number="1.6.2" class="anchored" data-anchor-id="visualize-cv-results-2"><span class="header-section-number">1.6.2</span> Visualize CV results</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="fu">h2o.varimp_plot</span>(gb_mod_h2o)  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="hw5_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="model-stacking" class="level2" data-number="1.7">
+<h2 data-number="1.7" class="anchored" data-anchor-id="model-stacking"><span class="header-section-number">1.7</span> Model Stacking</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>feature_columns <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(<span class="fu">names</span>(icu_cohort_train), <span class="st">"los_long"</span>)</span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>h2o_stacked_model <span class="ot">&lt;-</span> <span class="fu">h2o.stackedEnsemble</span>(</span>
+<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> feature_columns,</span>
+<span id="cb55-5"><a href="#cb55-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">y =</span> <span class="st">"los_long"</span>,</span>
+<span id="cb55-6"><a href="#cb55-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">training_frame =</span> icu_cohort_train,</span>
+<span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">base_models =</span> <span class="fu">list</span>(rf_mod_h2o, gb_mod_h2o, logit_mod_h2o)  </span>
+<span id="cb55-8"><a href="#cb55-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |======================================================================| 100%</code></pre>
+</div>
+</div>
+<section id="predict" class="level3" data-number="1.7.1">
+<h3 data-number="1.7.1" class="anchored" data-anchor-id="predict"><span class="header-section-number">1.7.1</span> Predict</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a>h2o_stacked_predictions <span class="ot">&lt;-</span> <span class="fu">h2o.predict</span>(h2o_stacked_model, icu_cohort_test) <span class="sc">|&gt;</span></span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |======================================================================| 100%
+  predict     FALSE      TRUE
+1    TRUE 0.5125255 0.4874745
+2    TRUE 0.6031984 0.3968016
+3   FALSE 0.6697046 0.3302954
+4   FALSE 0.6697046 0.3302954
+5    TRUE 0.5583365 0.4416635
+6    TRUE 0.5873285 0.4126715
+
+[41522 rows x 3 columns] </code></pre>
+</div>
+</div>
+</section>
+<section id="model-performance" class="level3" data-number="1.7.2">
+<h3 data-number="1.7.2" class="anchored" data-anchor-id="model-performance"><span class="header-section-number">1.7.2</span> Model Performance</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(pROC)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Type 'citation("pROC")' for a citation.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'pROC'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following object is masked from 'package:h2o':
+
+    var</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following objects are masked from 'package:stats':
+
+    cov, smooth, var</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="fu">h2o.performance</span>(h2o_stacked_model, <span class="at">newdata =</span> icu_cohort_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>H2OBinomialMetrics: stackedensemble
+
+MSE:  0.2352445
+RMSE:  0.4850201
+LogLoss:  0.6627929
+Mean Per-Class Error:  0.463774
+AUC:  0.6369982
+AUCPR:  0.6102181
+Gini:  0.2739963
+
+Confusion Matrix (vertical: actual; across: predicted) for F1-optimal threshold:
+       FALSE  TRUE    Error          Rate
+FALSE   2573 18949 0.880448  =18949/21522
+TRUE     942 19058 0.047100    =942/20000
+Totals  3515 38007 0.479047  =19891/41522
+
+Maximum Metrics: Maximum metrics at their respective thresholds
+                        metric threshold        value idx
+1                       max f1  0.335106     0.657093 338
+2                       max f2  0.192474     0.822930 398
+3                 max f0point5  0.454596     0.585274 229
+4                 max accuracy  0.489978     0.598068 196
+5                max precision  0.834882     1.000000   0
+6                   max recall  0.192474     1.000000 398
+7              max specificity  0.834882     1.000000   0
+8             max absolute_mcc  0.454596     0.196925 229
+9   max min_per_class_accuracy  0.474861     0.596550 210
+10 max mean_per_class_accuracy  0.454596     0.597682 229
+11                     max tns  0.834882 21522.000000   0
+12                     max fns  0.834882 19996.000000   0
+13                     max fps  0.187252 21522.000000 399
+14                     max tps  0.192474 20000.000000 398
+15                     max tnr  0.834882     1.000000   0
+16                     max fnr  0.834882     0.999800   0
+17                     max fpr  0.187252     1.000000 399
+18                     max tpr  0.192474     1.000000 398
+
+Gains/Lift Table: Extract with `h2o.gainsLift(&lt;model&gt;, &lt;data&gt;)` or `h2o.gainsLift(&lt;model&gt;, valid=&lt;T/F&gt;, xval=&lt;T/F&gt;)`</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb66"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a><span class="co"># stacking model</span></span>
+<span id="cb66-2"><a href="#cb66-2" aria-hidden="true" tabindex="-1"></a>perf_stack <span class="ot">&lt;-</span> <span class="fu">h2o.performance</span>(h2o_stacked_model, <span class="at">newdata =</span> icu_cohort_test)</span>
+<span id="cb66-3"><a href="#cb66-3" aria-hidden="true" tabindex="-1"></a>auc_stack <span class="ot">&lt;-</span> <span class="fu">h2o.auc</span>(perf_stack)</span>
+<span id="cb66-4"><a href="#cb66-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-5"><a href="#cb66-5" aria-hidden="true" tabindex="-1"></a><span class="co"># rf model</span></span>
+<span id="cb66-6"><a href="#cb66-6" aria-hidden="true" tabindex="-1"></a>perf_rf <span class="ot">&lt;-</span> <span class="fu">h2o.performance</span>(rf_mod_h2o, <span class="at">newdata =</span> icu_cohort_test)</span>
+<span id="cb66-7"><a href="#cb66-7" aria-hidden="true" tabindex="-1"></a>auc_rf <span class="ot">&lt;-</span> <span class="fu">h2o.auc</span>(perf_rf)</span>
+<span id="cb66-8"><a href="#cb66-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-9"><a href="#cb66-9" aria-hidden="true" tabindex="-1"></a><span class="co"># gb model</span></span>
+<span id="cb66-10"><a href="#cb66-10" aria-hidden="true" tabindex="-1"></a>perf_gb <span class="ot">&lt;-</span> <span class="fu">h2o.performance</span>(gb_mod_h2o, <span class="at">newdata =</span> icu_cohort_test)</span>
+<span id="cb66-11"><a href="#cb66-11" aria-hidden="true" tabindex="-1"></a>auc_gb <span class="ot">&lt;-</span> <span class="fu">h2o.auc</span>(perf_gb)</span>
+<span id="cb66-12"><a href="#cb66-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-13"><a href="#cb66-13" aria-hidden="true" tabindex="-1"></a><span class="co"># logit model</span></span>
+<span id="cb66-14"><a href="#cb66-14" aria-hidden="true" tabindex="-1"></a>perf_logit <span class="ot">&lt;-</span> <span class="fu">h2o.performance</span>(logit_mod_h2o, <span class="at">newdata =</span> icu_cohort_test)</span>
+<span id="cb66-15"><a href="#cb66-15" aria-hidden="true" tabindex="-1"></a>auc_logit <span class="ot">&lt;-</span> <span class="fu">h2o.auc</span>(perf_logit)</span>
+<span id="cb66-16"><a href="#cb66-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-17"><a href="#cb66-17" aria-hidden="true" tabindex="-1"></a><span class="co"># table</span></span>
+<span id="cb66-18"><a href="#cb66-18" aria-hidden="true" tabindex="-1"></a>auc_table <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb66-19"><a href="#cb66-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">Model =</span> <span class="fu">c</span>(<span class="st">"Stacked Ensemble"</span>, <span class="st">"Random Forest"</span>, </span>
+<span id="cb66-20"><a href="#cb66-20" aria-hidden="true" tabindex="-1"></a>            <span class="st">"GBM"</span>, <span class="st">"Logistic Regression"</span>),</span>
+<span id="cb66-21"><a href="#cb66-21" aria-hidden="true" tabindex="-1"></a>  <span class="at">AUC =</span> <span class="fu">c</span>(auc_stack, auc_rf, auc_gb, auc_logit)</span>
+<span id="cb66-22"><a href="#cb66-22" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span></span>
+<span id="cb66-23"><a href="#cb66-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                Model       AUC
+1    Stacked Ensemble 0.6369982
+2       Random Forest 0.6263728
+3                 GBM 0.6341979
+4 Logistic Regression 0.6030615</code></pre>
+</div>
+</div>
+<p><strong>conclusion</strong> The table above compares the AUC (Area Under the ROC Curve) values for four different classification models—Stacked Ensemble, Random Forest, GBM (Gradient Boosting Machine), and Logistic Regression. The Stacked Ensemble achieves the highest AUC at 0.6370, followed by GBM at 0.6342, Random Forest at 0.6264, and Logistic Regression at 0.6031.The stacked model slightly outperforms the individual algorithms.</p>
+</section>
+<section id="predicting-compare" class="level3" data-number="1.7.3">
+<h3 data-number="1.7.3" class="anchored" data-anchor-id="predicting-compare"><span class="header-section-number">1.7.3</span> Predicting compare</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb68"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Logistic Regression</span></span>
+<span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a>perf_logit <span class="ot">&lt;-</span> <span class="fu">h2o.performance</span>(logit_mod_h2o, <span class="at">newdata =</span> icu_cohort_test)</span>
+<span id="cb68-3"><a href="#cb68-3" aria-hidden="true" tabindex="-1"></a>cm_logit <span class="ot">&lt;-</span> <span class="fu">h2o.confusionMatrix</span>(perf_logit, <span class="at">thresholds =</span> <span class="fl">0.5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in h2o.find_row_by_threshold(object, t): Could not find exact
+threshold: 0.5 for this set of metrics; using closest threshold found:
+0.500178129651075. Run `h2o.predict` and apply your desired threshold on a
+probability column.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb70"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">--- Logistic Regression Confusion Matrix (threshold=0.5) ---</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+--- Logistic Regression Confusion Matrix (threshold=0.5) ---</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb72"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(cm_logit)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Confusion Matrix (vertical: actual; across: predicted)  @ threshold = 0.500178129651075:
+       FALSE  TRUE    Error          Rate
+FALSE  14770  6752 0.313725   =6752/21522
+TRUE   10891  9109 0.544550  =10891/20000
+Totals 25661 15861 0.424907  =17643/41522</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb74"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Random Forest</span></span>
+<span id="cb74-2"><a href="#cb74-2" aria-hidden="true" tabindex="-1"></a>perf_rf <span class="ot">&lt;-</span> <span class="fu">h2o.performance</span>(rf_mod_h2o, <span class="at">newdata =</span> icu_cohort_test)</span>
+<span id="cb74-3"><a href="#cb74-3" aria-hidden="true" tabindex="-1"></a>cm_rf <span class="ot">&lt;-</span> <span class="fu">h2o.confusionMatrix</span>(perf_rf, <span class="at">thresholds =</span> <span class="fl">0.5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in h2o.find_row_by_threshold(object, t): Could not find exact
+threshold: 0.5 for this set of metrics; using closest threshold found:
+0.499992401930058. Run `h2o.predict` and apply your desired threshold on a
+probability column.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb76"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">--- Random Forest Confusion Matrix (threshold=0.5) ---</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+--- Random Forest Confusion Matrix (threshold=0.5) ---</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb78"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(cm_rf)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Confusion Matrix (vertical: actual; across: predicted)  @ threshold = 0.499992401930058:
+       FALSE  TRUE    Error          Rate
+FALSE  14726  6796 0.315770   =6796/21522
+TRUE   10198  9802 0.509900  =10198/20000
+Totals 24924 16598 0.409277  =16994/41522</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb80"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a><span class="co"># GBM</span></span>
+<span id="cb80-2"><a href="#cb80-2" aria-hidden="true" tabindex="-1"></a>perf_gb <span class="ot">&lt;-</span> <span class="fu">h2o.performance</span>(gb_mod_h2o, <span class="at">newdata =</span> icu_cohort_test)</span>
+<span id="cb80-3"><a href="#cb80-3" aria-hidden="true" tabindex="-1"></a>cm_gb <span class="ot">&lt;-</span> <span class="fu">h2o.confusionMatrix</span>(perf_gb, <span class="at">thresholds =</span> <span class="fl">0.5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in h2o.find_row_by_threshold(object, t): Could not find exact
+threshold: 0.5 for this set of metrics; using closest threshold found:
+0.500408734793412. Run `h2o.predict` and apply your desired threshold on a
+probability column.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb82"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb82-1"><a href="#cb82-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">--- GBM Confusion Matrix (threshold=0.5) ---</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+--- GBM Confusion Matrix (threshold=0.5) ---</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb84"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb84-1"><a href="#cb84-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(cm_gb)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Confusion Matrix (vertical: actual; across: predicted)  @ threshold = 0.500408734793412:
+       FALSE  TRUE    Error          Rate
+FALSE  14496  7026 0.326457   =7026/21522
+TRUE    9744 10256 0.487200   =9744/20000
+Totals 24240 17282 0.403882  =16770/41522</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb86"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Stacked Ensemble</span></span>
+<span id="cb86-2"><a href="#cb86-2" aria-hidden="true" tabindex="-1"></a>perf_stack <span class="ot">&lt;-</span> <span class="fu">h2o.performance</span>(h2o_stacked_model, <span class="at">newdata =</span> icu_cohort_test)</span>
+<span id="cb86-3"><a href="#cb86-3" aria-hidden="true" tabindex="-1"></a>cm_stack <span class="ot">&lt;-</span> <span class="fu">h2o.confusionMatrix</span>(perf_stack, <span class="at">thresholds =</span> <span class="fl">0.5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in h2o.find_row_by_threshold(object, t): Could not find exact
+threshold: 0.5 for this set of metrics; using closest threshold found:
+0.499652532287864. Run `h2o.predict` and apply your desired threshold on a
+probability column.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb88"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb88-1"><a href="#cb88-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">--- Stacked Ensemble Confusion Matrix (threshold=0.5) ---</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+--- Stacked Ensemble Confusion Matrix (threshold=0.5) ---</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb90"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb90-1"><a href="#cb90-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(cm_stack)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Confusion Matrix (vertical: actual; across: predicted)  @ threshold = 0.499652532287864:
+       FALSE  TRUE    Error          Rate
+FALSE  14551  6971 0.323901   =6971/21522
+TRUE    9751 10249 0.487550   =9751/20000
+Totals 24302 17220 0.402726  =16722/41522</code></pre>
+</div>
+</div>
+<p><strong>conclusion</strong> The Stacked Ensemble achieves the lowest overall error and the highest AUC, indicating that combining multiple base learners yields better predictive performance. Random Forest and GBM both outperform Logistic Regression, reflecting the benefit of more flexible, non-linear modeling. However, each model still shows substantial difficulty correctly identifying positive cases, as evidenced by higher error rates in the TRUE class. Overall, these results suggest that ensemble methods—especially stacking—can provide incremental yet meaningful improvements over individual algorithms.</p>
+</section>
+<section id="roc-plot" class="level3" data-number="1.7.4">
+<h3 data-number="1.7.4" class="anchored" data-anchor-id="roc-plot"><span class="header-section-number">1.7.4</span> ROC plot</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb92"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb92-1"><a href="#cb92-1" aria-hidden="true" tabindex="-1"></a>true_labels <span class="ot">&lt;-</span> <span class="fu">as.vector</span>(icu_cohort_test<span class="sc">$</span>los_long)</span>
+<span id="cb92-2"><a href="#cb92-2" aria-hidden="true" tabindex="-1"></a>get_roc_df <span class="ot">&lt;-</span> <span class="cf">function</span>(model, test_frame, true_labels, <span class="at">pos_class =</span> <span class="st">"TRUE"</span>) {</span>
+<span id="cb92-3"><a href="#cb92-3" aria-hidden="true" tabindex="-1"></a>  preds <span class="ot">&lt;-</span> <span class="fu">h2o.predict</span>(model, test_frame)</span>
+<span id="cb92-4"><a href="#cb92-4" aria-hidden="true" tabindex="-1"></a>  pred_prob <span class="ot">&lt;-</span> <span class="fu">as.vector</span>(preds[[pos_class]])</span>
+<span id="cb92-5"><a href="#cb92-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># use pROC</span></span>
+<span id="cb92-6"><a href="#cb92-6" aria-hidden="true" tabindex="-1"></a>  roc_obj <span class="ot">&lt;-</span> <span class="fu">roc</span>(true_labels, pred_prob)</span>
+<span id="cb92-7"><a href="#cb92-7" aria-hidden="true" tabindex="-1"></a>  roc_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb92-8"><a href="#cb92-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">fpr =</span> <span class="dv">1</span> <span class="sc">-</span> <span class="fu">rev</span>(roc_obj<span class="sc">$</span>specificities),</span>
+<span id="cb92-9"><a href="#cb92-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">tpr =</span> <span class="fu">rev</span>(roc_obj<span class="sc">$</span>sensitivities)</span>
+<span id="cb92-10"><a href="#cb92-10" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb92-11"><a href="#cb92-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(roc_df)</span>
+<span id="cb92-12"><a href="#cb92-12" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb92-13"><a href="#cb92-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb92-14"><a href="#cb92-14" aria-hidden="true" tabindex="-1"></a><span class="co"># get ROC for each model</span></span>
+<span id="cb92-15"><a href="#cb92-15" aria-hidden="true" tabindex="-1"></a>roc_logit <span class="ot">&lt;-</span> <span class="fu">get_roc_df</span>(logit_mod_h2o, icu_cohort_test, true_labels)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |======================================================================| 100%</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Setting levels: control = FALSE, case = TRUE</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Setting direction: controls &lt; cases</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb96"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb96-1"><a href="#cb96-1" aria-hidden="true" tabindex="-1"></a>roc_rf    <span class="ot">&lt;-</span> <span class="fu">get_roc_df</span>(rf_mod_h2o, icu_cohort_test, true_labels)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |======================================================================| 100%</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Setting levels: control = FALSE, case = TRUE
+Setting direction: controls &lt; cases</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb99"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb99-1"><a href="#cb99-1" aria-hidden="true" tabindex="-1"></a>roc_gb    <span class="ot">&lt;-</span> <span class="fu">get_roc_df</span>(gb_mod_h2o, icu_cohort_test, true_labels)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |======================================================================| 100%</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Setting levels: control = FALSE, case = TRUE
+Setting direction: controls &lt; cases</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb102"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb102-1"><a href="#cb102-1" aria-hidden="true" tabindex="-1"></a>roc_stack <span class="ot">&lt;-</span> <span class="fu">get_roc_df</span>(h2o_stacked_model, icu_cohort_test, true_labels)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |======================================================================| 100%</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Setting levels: control = FALSE, case = TRUE
+Setting direction: controls &lt; cases</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb105"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb105-1"><a href="#cb105-1" aria-hidden="true" tabindex="-1"></a>roc_logit<span class="sc">$</span>model <span class="ot">&lt;-</span> <span class="st">"Logistic Regression"</span></span>
+<span id="cb105-2"><a href="#cb105-2" aria-hidden="true" tabindex="-1"></a>roc_rf<span class="sc">$</span>model    <span class="ot">&lt;-</span> <span class="st">"Random Forest"</span></span>
+<span id="cb105-3"><a href="#cb105-3" aria-hidden="true" tabindex="-1"></a>roc_gb<span class="sc">$</span>model    <span class="ot">&lt;-</span> <span class="st">"GBM"</span></span>
+<span id="cb105-4"><a href="#cb105-4" aria-hidden="true" tabindex="-1"></a>roc_stack<span class="sc">$</span>model <span class="ot">&lt;-</span> <span class="st">"Stacked Ensemble"</span></span>
+<span id="cb105-5"><a href="#cb105-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb105-6"><a href="#cb105-6" aria-hidden="true" tabindex="-1"></a><span class="co"># merge all ROC data</span></span>
+<span id="cb105-7"><a href="#cb105-7" aria-hidden="true" tabindex="-1"></a>roc_data <span class="ot">&lt;-</span> <span class="fu">rbind</span>(roc_logit, roc_rf, roc_gb, roc_stack)</span>
+<span id="cb105-8"><a href="#cb105-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb105-9"><a href="#cb105-9" aria-hidden="true" tabindex="-1"></a><span class="co"># ggplot</span></span>
+<span id="cb105-10"><a href="#cb105-10" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(roc_data, <span class="fu">aes</span>(<span class="at">x =</span> fpr, <span class="at">y =</span> tpr, <span class="at">color =</span> model)) <span class="sc">+</span></span>
+<span id="cb105-11"><a href="#cb105-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb105-12"><a href="#cb105-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_abline</span>(<span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">color =</span> <span class="st">"black"</span>) <span class="sc">+</span></span>
+<span id="cb105-13"><a href="#cb105-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"ROC Curves for Different H2O Models"</span>,</span>
+<span id="cb105-14"><a href="#cb105-14" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">"False Positive Rate (FPR)"</span>,</span>
+<span id="cb105-15"><a href="#cb105-15" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">"True Positive Rate (TPR)"</span>) <span class="sc">+</span></span>
+<span id="cb105-16"><a href="#cb105-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead.</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="hw5_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>conclusion</strong> From the figure it can be seen that stacking model has the best ROC curve performance, which is similar to that of GBM, random forests are slightly inferior to them, and logistic regression has the worst ROC performance.</p>
+<p><strong>What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?</strong> From the feature importance analysis, we can see all three models agree that first careunit is one of the most important features in predicting long ICU stays.The last lab measurements before the ICU stay and first vital measurements during ICU stay are also in top important features. This suggests that the last lab measurements before the ICU stay and first vital measurements during ICU stay are important indicators of the patient’s condition and may be useful in predicting long ICU stays. In this case, the trade-off between performance and interpretability is clear. While the model stacking approach gives the best ROC AUC, it does so at the cost of interpretability. On the other hand, logistic regression offers ease of interpretation but doesn’t perform as well. The gradient boosting model presents a good balance, with relatively high performance metrics and a degree of interpretability through feature importance scores.</p>
+</section>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
